@@ -1,0 +1,16 @@
+# ignore
+deploy
+node_modules
+
+dist
+build
+.next
+
+.git*
+.env*
+
+*.md
+*.log
+*.dockerfile
+
+.dockerignore

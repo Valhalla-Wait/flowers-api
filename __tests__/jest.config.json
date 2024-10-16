@@ -1,0 +1,19 @@
+{
+  "bail": true,
+  "testTimeout": 300000,
+  "testEnvironment": "node",
+  
+  "rootDir": "../",
+  "moduleFileExtensions": ["js", "json", "ts"],
+  
+  "testMatch": [
+    "<rootDir>/__tests__/tests/**/*.test.ts"
+  ],
+  "moduleNameMapper": {
+    "^@/(.*)$": "<rootDir>/src/$1",
+    "^@test/(.*)$": "<rootDir>/__tests__/$1"
+  },
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  }  
+}

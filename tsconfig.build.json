@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "sourceMap": false,
+    "declaration": false,
+    "outDir": "./dist/src",
+  },
+  "include": [
+    "src/main.ts",
+    "src/config/ormconfig.ts",
+    "src/database/migrations",
+    "src/modules/**/*.entity.ts",
+  ]
+}
+
