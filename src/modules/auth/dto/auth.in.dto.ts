@@ -1,21 +1,24 @@
-import { IsNumber, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
 
 @Exclude()
-export class AuthDto {
+export class LoginUserInDto {
   @Expose()
-  @IsNumber()
+  @IsString()
   @ApiProperty()
-  readonly vkId: number;
+  readonly password: string;
+}
+
+@Exclude()
+export class ResetPasswordInDto {
+  @Expose()
+  @IsString()
+  @ApiProperty()
+  readonly code: string;
 
   @Expose()
   @IsString()
   @ApiProperty()
-  readonly firstName: string;
-
-  @Expose()
-  @IsString()
-  @ApiProperty()
-  readonly lastName: string;
+  readonly newPassword: string;
 }

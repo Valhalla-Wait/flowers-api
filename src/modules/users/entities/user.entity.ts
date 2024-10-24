@@ -16,8 +16,14 @@ export class UserEntity extends BaseEntityWithDatesAndIdColumns {
   })
   phone: string;
 
+  @Column()
+  password: string;
+
   @Column({
     enum: Roles,
   })
   role: Roles;
+
+  @Column({ type: 'uuid', nullable: true })
+  lastAccessTokenId: string | null;
 }

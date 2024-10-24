@@ -1,37 +1,43 @@
 import { Injectable } from '@nestjs/common';
-import { CreateUserDto } from '@/modules/users/dto/user.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { UserEntity } from '@/modules/users/entities/user.entity';
-import { UsersExceptions } from '@/exceptions/users';
+import { FindOptionsWhere, Repository } from 'typeorm';
+
+import { UserEntity } from 'src/modules/users/entities/user.entity';
+import { UsersException } from '@/exceptions/users.exception';
+import { Passworder } from '@/lib/Passworder';
 
 @Injectable()
 export class UsersService {
-  constructor(
+  public constructor(
     @InjectRepository(UserEntity)
     private readonly usersRepository: Repository<UserEntity>,
   ) {}
 
-  create(data: CreateUserDto) {
-    return this.usersRepository.save(data);
-  }
-
-  async findByIdOrError(id: string, withoutThrow = false): Promise<UserEntity | null> {
-    const user = await this.usersRepository.findOne({
-      where: { id },
-      relations: {},
+  public async findOneByOrError(where: FindOptionsWhere<UserEntity>, withoutError?: boolean) {
+    const foundedUser = await this.usersRepository.findOne({
+      where,
     });
 
-    if (!user && !withoutThrow) {
-      throw UsersExceptions.UserNotFound();
-    }
+    if (!foundedUser && !withoutError) throw UsersException.NotFound();
 
-    return user;
+    return foundedUser;
   }
 
-  async findOneById(id: string): Promise<UserEntity | null> {
-    return this.usersRepository.findOne({
-      where: { id },
+  public async updateUserPassword(id: string, newPassword: string): Promise<UserEntity> {
+    const user = await this.findOneByOrError({ id });
+
+    const updatedUser = this.usersRepository.merge(user, {
+      password: await Passworder.hashPassword(newPassword),
     });
+
+    return this.usersRepository.save(updatedUser) as Promise<UserEntity>;
+  }
+
+  public async updateLastToken(user: UserEntity, tokenId: string | null): Promise<UserEntity> {
+    const updatedUser = this.usersRepository.merge(user, {
+      lastAccessTokenId: tokenId,
+    });
+
+    return this.usersRepository.save(updatedUser);
   }
 }
