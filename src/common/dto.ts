@@ -13,10 +13,6 @@ export class OutputUser {
 
   @Expose()
   @ApiProperty()
-  vkId: number;
-
-  @Expose()
-  @ApiProperty()
   firstName: string;
 
   @Expose()

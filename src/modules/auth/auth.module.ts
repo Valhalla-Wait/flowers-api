@@ -1,15 +1,15 @@
-import { Module } from '@nestjs/common';
-import { AuthService } from '@/modules/auth/auth.service';
-
-import { JwtProviderModule } from '@/auth/jwt/jwt.module';
+import { forwardRef, Module } from '@nestjs/common';
+import { AuthService } from 'src/modules/auth/auth.service';
 import { UsersModule } from '@/modules/users/users.module';
-
 import { AuthController } from '@/modules/auth/auth.controller';
-import { TokensService } from '@/modules/tokens/tokens.service';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { UserEntity } from '@/modules/users/entities/user.entity';
+import { JwtGlobalModule } from '@/auth/jwt/jwt.module';
 
 @Module({
-  imports: [JwtProviderModule, UsersModule],
-  providers: [AuthService, TokensService],
+  imports: [TypeOrmModule.forFeature([UserEntity]), UsersModule, forwardRef(() => JwtGlobalModule)],
+  providers: [AuthService],
+  exports: [AuthService],
   controllers: [AuthController],
 })
 export class AuthModule {}

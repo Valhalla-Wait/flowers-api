@@ -1,17 +1,24 @@
 declare namespace NodeJS {
   type ProcessEnv = {
-    APP_PORT: string;
+    APP_PORT: number;
+    NODE_ENV: 'development' | 'production';
 
     POSTGRES_DB: string;
     POSTGRES_HOST: string;
-    POSTGRES_PORT: string;
+    POSTGRES_PORT: number;
     POSTGRES_USER: string;
     POSTGRES_PASSWORD: string;
 
-    JWT_ACCESS_USER_TOKEN_SECRET: string;
-    JWT_ACCESS_ADMIN_TOKEN_SECRET: string;
+    CODE: string;
 
-    JWT_ACCESS_USER_TOKEN_EXPIRE_TIME: string;
-    JWT_ACCESS_ADMIN_TOKEN_EXPIRE_TIME: string;
+    JWT_SECRET: string;
+    PASSWORD_SECRET: string;
+
+    JWT_TOKEN_EXPIRES_IN: string;
+    JWT_REFRESH_TOKEN_EXPIRES_IN: string;
+
+    // NOTE
+    // Базовая env при запуске через пакетный менеджер
+    npm_package_version: string;
   };
 }

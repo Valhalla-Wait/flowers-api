@@ -1,19 +1,17 @@
-// TODO: Верификация
-
 class EnvConfig {
   get app() {
     return {
-      port: parseInt(process.env.APP_PORT) || 8888,
+      port: Number(process.env.APP_PORT) || 8888,
+      passwordSalt: process.env.PASSWORD_SECRET,
+      code: process.env.CODE,
     };
   }
 
   get jwt() {
     return {
-      userSecret: process.env.JWT_ACCESS_USER_TOKEN_SECRET,
-      userExpireTime: process.env.JWT_ACCESS_USER_TOKEN_EXPIRE_TIME || '30d',
-
-      adminSecret: process.env.JWT_ACCESS_ADMIN_TOKEN_SECRET,
-      adminExpireTime: process.env.JWT_ACCESS_ADMIN_TOKEN_EXPIRE_TIME || '30d',
+      secret: process.env.JWT_SECRET,
+      refreshExpires: process.env.JWT_REFRESH_TOKEN_EXPIRES_IN,
+      accessExpires: process.env.JWT_TOKEN_EXPIRES_IN,
     };
   }
 
