@@ -31,7 +31,7 @@ export class RefreshJwtStrategy
     });
   }
 
-  //! Это баг, нельзя общий метод использовать
+  //! Это баг наверно, нельзя общее свойство использовать
   // TODO: нужно ли в базе хранить last_access_token_id?
   private response?: Response;
 

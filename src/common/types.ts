@@ -19,6 +19,8 @@ export interface ApiPaginationMeta {
   pages: number;
 }
 
+export type ApiResponse<T> = T;
+
 export type ApiResponseWithPagination<T> = {
   list: T[];
   meta: ApiPaginationMeta;
