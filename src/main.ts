@@ -9,6 +9,7 @@ import { AppModule } from '@/app.module';
 import EnvConfig from '@/config/envConfig';
 import { GlobalJwtGuard } from '@/auth/guards/global-jwt.guard';
 import { runSeeds } from '@/database';
+import { FormatResponseInterceptor } from '@/interceptors/transform.interceptors';
 
 function initializeSwaggerDocumentation(app: INestApplication) {
   const PATH = '/api/docs';
@@ -54,6 +55,7 @@ async function bootstrap(port: number) {
   app.use(morgan(':date[iso] :method :url :status - :response-time ms'));
   app.use(cookieParser());
   app.useGlobalGuards(new GlobalJwtGuard(reflector));
+  app.useGlobalInterceptors(new FormatResponseInterceptor());
 
   initializeSwaggerDocumentation(app);
 

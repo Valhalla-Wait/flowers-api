@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { ProductsService } from '@/modules/products/products.service';
 import { CreateProductDto, UpdateProductDto } from '@/modules/products/dto/product.in.dto';
 import { Public } from '@/auth/decorators/is-public';
 import { plainToInstance } from 'class-transformer';
 import { ProductOutDto } from '@/modules/products/dto/product.out.dto';
+import { PaginationQueryDto } from '@/common/dto/pagination.in.dto';
 
 @Controller('products')
 export class ProductsController {
@@ -19,9 +20,8 @@ export class ProductsController {
   @Public({
     withoutAdminProtection: true,
   })
-  async findAll() {
-    const products = await this.productsService.findAll();
-    return plainToInstance(ProductOutDto, products);
+  async findAll(@Query() query: PaginationQueryDto) {
+    return this.productsService.findAll(query);
   }
 
   @Get(':id')

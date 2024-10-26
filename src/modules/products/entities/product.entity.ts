@@ -17,7 +17,3 @@ export class ProductEntity extends BaseEntityWithDatesAndIdColumns {
   })
   isAvailable: boolean;
 }
-
-// TODO: Добавить обработку ошибки если не найдена сущность
-// TODO: Добавить глобальный интерсептор на обертку в data
-// TODO: Добавить пагинацию
