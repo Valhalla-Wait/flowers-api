@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Delete, Query } from '@nestjs/common';
 import { ProductsService } from '@/modules/products/products.service';
 import { CreateProductDto, UpdateProductDto } from '@/modules/products/dto/product.in.dto';
 import { Public } from '@/auth/decorators/is-public';
 import { plainToInstance } from 'class-transformer';
-import { ProductOutDto } from '@/modules/products/dto/product.out.dto';
+import { ProductDetailOutDto, ProductOutDto } from '@/modules/products/dto/product.out.dto';
 import { PaginationQueryDto } from '@/common/dto/pagination.in.dto';
+import { ParamUUID } from '@/decorators/paramuuid.decorator';
 
 @Controller('products')
 export class ProductsController {
@@ -28,19 +29,19 @@ export class ProductsController {
   @Public({
     withoutAdminProtection: true,
   })
-  async findOne(@Param('id') id: string) {
+  async findOne(@ParamUUID('id') id: string) {
     const product = await this.productsService.findOne(id);
-    return plainToInstance(ProductOutDto, product);
+    return plainToInstance(ProductDetailOutDto, product);
   }
 
   @Patch(':id')
-  async update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
+  async update(@ParamUUID('id') id: string, @Body() updateProductDto: UpdateProductDto) {
     const product = await this.productsService.update(id, updateProductDto);
-    return plainToInstance(ProductOutDto, product);
+    return plainToInstance(ProductDetailOutDto, product);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
+  async remove(@ParamUUID('id') id: string) {
     await this.productsService.remove(id);
     return {
       message: 'Success',

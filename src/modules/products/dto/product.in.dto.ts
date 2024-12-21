@@ -1,6 +1,6 @@
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
-import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
 
 @Exclude()
 export class CreateProductDto {
@@ -13,6 +13,12 @@ export class CreateProductDto {
   @IsNumber()
   @ApiProperty()
   readonly price: number;
+
+  @Expose()
+  @IsArray()
+  @IsString({ each: true })
+  @ApiProperty()
+  readonly consumableIds: string[];
 
   @Expose()
   @IsString()
