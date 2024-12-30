@@ -1,11 +1,16 @@
 import { Controller, Get, Post, Body, Patch, Delete, Query } from '@nestjs/common';
 import { ProductsService } from '@/modules/products/products.service';
-import { CreateProductDto, UpdateProductDto } from '@/modules/products/dto/product.in.dto';
+import {
+  CreateProductDto,
+  ProductQueryDto,
+  UpdateProductDto,
+} from '@/modules/products/dto/product.in.dto';
 import { Public } from '@/auth/decorators/is-public';
 import { plainToInstance } from 'class-transformer';
 import { ProductDetailOutDto, ProductOutDto } from '@/modules/products/dto/product.out.dto';
-import { PaginationQueryDto } from '@/common/dto/pagination.in.dto';
 import { ParamUUID } from '@/decorators/paramuuid.decorator';
+import { User } from '@/decorators/user.decorator';
+import { UserEntity } from '@/modules/users/entities/user.entity';
 
 @Controller('products')
 export class ProductsController {
@@ -21,8 +26,8 @@ export class ProductsController {
   @Public({
     withoutAdminProtection: true,
   })
-  async findAll(@Query() query: PaginationQueryDto) {
-    return this.productsService.findAll(query);
+  async findAll(@Query() query: ProductQueryDto, @User() user: UserEntity) {
+    return this.productsService.findAll(query, user);
   }
 
   @Get(':id')

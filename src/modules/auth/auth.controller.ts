@@ -35,9 +35,7 @@ export class AuthController {
       setTokenCookies(res, tokens[token], token);
     }
 
-    res.send({ user });
-
-    return plainToInstance(OutputAuth, user);
+    return res.send(plainToInstance(OutputAuth, { data: user }));
   }
 
   @Post('sign-up')
@@ -52,9 +50,7 @@ export class AuthController {
       setTokenCookies(res, tokens[token], token);
     }
 
-    res.send({ user });
-
-    return plainToInstance(OutputAuth, user);
+    return res.send(plainToInstance(OutputAuth, { data: user }));
   }
 
   @Post('reset')

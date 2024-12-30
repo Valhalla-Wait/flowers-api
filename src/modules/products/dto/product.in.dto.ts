@@ -1,6 +1,7 @@
+import { PaginationQueryDto } from '@/common/dto/pagination.in.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
-import { Exclude, Expose } from 'class-transformer';
-import { IsArray, IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
+import { Exclude, Expose, Type } from 'class-transformer';
+import { IsArray, IsBoolean, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 
 @Exclude()
 export class CreateProductDto {
@@ -16,9 +17,9 @@ export class CreateProductDto {
 
   @Expose()
   @IsArray()
-  @IsString({ each: true })
+  @Type(() => AddProductConsumableDto)
   @ApiProperty()
-  readonly consumableIds: string[];
+  readonly consumables: AddProductConsumableDto[];
 
   @Expose()
   @IsString()
@@ -28,6 +29,16 @@ export class CreateProductDto {
   readonly photo: string;
 }
 
+export class AddProductConsumableDto {
+  @IsUUID()
+  @ApiProperty()
+  readonly id: string;
+
+  @IsNumber()
+  @ApiProperty()
+  readonly requiredCount: number;
+}
+
 export class UpdateProductDto extends PartialType(CreateProductDto) {
   @Expose()
   @IsBoolean()
@@ -35,3 +46,5 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
   @ApiProperty()
   isAvailable?: boolean;
 }
+
+export class ProductQueryDto extends PaginationQueryDto {}

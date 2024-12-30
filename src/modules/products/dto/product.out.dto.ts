@@ -15,9 +15,15 @@ export class ProductOutDto extends CreateProductDto {
 }
 
 @Exclude()
+export class ProductConsumableOutDto extends ConsumableOutDto {
+  @Expose()
+  @ApiProperty()
+  requiredCount: number;
+}
+@Exclude()
 export class ProductDetailOutDto extends ProductOutDto {
   @Expose()
   @ApiProperty()
-  @Type(() => ConsumableOutDto)
-  consumables: ConsumableOutDto[];
+  @Type(() => ProductConsumableOutDto)
+  consumables: ProductConsumableOutDto[];
 }

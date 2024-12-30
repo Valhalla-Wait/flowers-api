@@ -18,4 +18,8 @@ export class OutputUser {
   @Expose()
   @ApiProperty()
   lastName: string;
+
+  @Expose()
+  @ApiProperty()
+  phone: string;
 }

@@ -1,6 +1,6 @@
-import { ConsumableEntity } from '@/modules/consumables/entities/consumable.entity';
 import { BaseEntityWithDatesAndIdColumns } from '@/resources/base.entity';
-import { Column, Entity, JoinTable, ManyToMany } from 'typeorm';
+import { Column, Entity, OneToMany } from 'typeorm';
+import { ProductConsumablesEntity } from '@/modules/products/entities/productConsumables.entity';
 
 @Entity('products')
 export class ProductEntity extends BaseEntityWithDatesAndIdColumns {
@@ -18,7 +18,6 @@ export class ProductEntity extends BaseEntityWithDatesAndIdColumns {
   })
   isAvailable: boolean;
 
-  @ManyToMany(() => ConsumableEntity)
-  @JoinTable()
-  consumables: ConsumableEntity[];
+  @OneToMany(() => ProductConsumablesEntity, (productConsumables) => productConsumables.product)
+  productConsumables: ProductConsumablesEntity[];
 }

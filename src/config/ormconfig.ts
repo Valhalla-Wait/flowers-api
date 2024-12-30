@@ -18,6 +18,7 @@ const config: DataSourceOptions = {
   entities: ['dist/src/modules/**/*.entity.js'],
   migrations: ['dist/src/database/migrations/*.js'],
 
+  //! Работает только на имена колонок, но не сущностей
   namingStrategy: new SnakeNamingStrategy(),
 };
 
