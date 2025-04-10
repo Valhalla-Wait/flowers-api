@@ -2,24 +2,16 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
 
 @Exclude()
-export class OutputUser {
+export class ConsumableOutDto {
   @Expose()
   @ApiProperty()
-  createdAt: string;
+  id: string;
 
   @Expose()
   @ApiProperty()
-  updatedAt: string;
+  title: string;
 
   @Expose()
   @ApiProperty()
-  firstName: string;
-
-  @Expose()
-  @ApiProperty()
-  lastName: string;
-
-  @Expose()
-  @ApiProperty()
-  phone: string;
+  count: number;
 }

@@ -2,9 +2,9 @@ import { UsersExceptions } from '@/exceptions/users';
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
 export const User = createParamDecorator((_data: unknown, ctx: ExecutionContext) => {
-  const user = ctx.switchToHttp().getRequest().user;
+  const { cookies, user } = ctx.switchToHttp().getRequest();
 
-  if (!user) {
+  if (!user && Object.keys(cookies).length) {
     return UsersExceptions.Unauthorized();
   }
 

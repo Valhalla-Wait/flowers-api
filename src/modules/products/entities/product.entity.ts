@@ -1,5 +1,6 @@
 import { BaseEntityWithDatesAndIdColumns } from '@/resources/base.entity';
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, OneToMany } from 'typeorm';
+import { ProductConsumablesEntity } from '@/modules/products/entities/productConsumables.entity';
 
 @Entity('products')
 export class ProductEntity extends BaseEntityWithDatesAndIdColumns {
@@ -16,4 +17,7 @@ export class ProductEntity extends BaseEntityWithDatesAndIdColumns {
     default: true,
   })
   isAvailable: boolean;
+
+  @OneToMany(() => ProductConsumablesEntity, (productConsumables) => productConsumables.product)
+  productConsumables: ProductConsumablesEntity[];
 }

@@ -1,26 +1,54 @@
 import { Injectable } from '@nestjs/common';
-import { CreateProductDto, UpdateProductDto } from '@/modules/products/dto/product.in.dto';
+import {
+  AddProductConsumableDto,
+  CreateProductDto,
+  ProductQueryDto,
+  UpdateProductDto,
+} from '@/modules/products/dto/product.in.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ProductEntity } from '@/modules/products/entities/product.entity';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { ProductsException } from '@/exceptions/products.exception';
-import { PaginationQueryDto } from '@/common/dto/pagination.in.dto';
 import getPaginationParams from '@/utils/getPaginationParams';
 import getPaginationMeta from '@/utils/getPaginationMeta';
 import { plainToInstance } from 'class-transformer';
 import { ProductOutDto } from '@/modules/products/dto/product.out.dto';
+import { ConsumableEntity } from '@/modules/consumables/entities/consumable.entity';
+import { ConsumablesException } from '@/exceptions/consumables.exception';
+import { ProductConsumablesEntity } from '@/modules/products/entities/productConsumables.entity';
+import { UserEntity } from '@/modules/users/entities/user.entity';
+
+type AddProductConsumableType = {
+  productId: string;
+  consumables: AddProductConsumableDto[];
+};
+
+type RemoveProductConsumableType = Pick<AddProductConsumableType, 'productId'> & {
+  consumableIds: string[];
+};
 
 @Injectable()
 export class ProductsService {
   constructor(
     @InjectRepository(ProductEntity)
     private readonly productsRepository: Repository<ProductEntity>,
+    @InjectRepository(ConsumableEntity)
+    private readonly consumablesRepository: Repository<ConsumableEntity>,
+    @InjectRepository(ProductConsumablesEntity)
+    private readonly productsConsumablesRepository: Repository<ProductConsumablesEntity>,
   ) {}
 
   private Exception = ProductsException;
 
   async findOneByIdOrError(id: string) {
-    const founded = await this.productsRepository.findOneBy({ id });
+    const founded = await this.productsRepository.findOne({
+      where: { id },
+      relations: {
+        productConsumables: {
+          consumable: true,
+        },
+      },
+    });
 
     if (!founded) {
       throw this.Exception.NotFound();
@@ -34,32 +62,84 @@ export class ProductsService {
     return this.productsRepository.save(productEntity);
   }
 
-  async findAll(query: PaginationQueryDto) {
-    const { skip, limit, page } = getPaginationParams(query);
+  private async getUserQuery(skip: number, limit: number) {
+    const data = this.productsRepository
+      .createQueryBuilder('products')
+      .where('nullable is null and is_available = true')
+      .leftJoin('products.productConsumables', 'productConsumables')
+      .leftJoinAndSelect(
+        (qb) =>
+          qb
+            .select()
+            .from(ProductConsumablesEntity, 'p')
+            .leftJoin('p.consumable', 'consumables')
+            .limit(1)
+            .where('consumables.count < p.requiredCount'),
+        'nullable',
+        'nullable.product_id = products.id',
+      )
+      .leftJoin('productConsumables.consumable', 'consumables')
+      .orderBy('products.createdAt', 'ASC')
+      .skip(skip)
+      .take(limit);
 
-    const [products, total] = await this.productsRepository.findAndCount({
+    return data.getManyAndCount();
+  }
+
+  private async getAdminQuery(skip: number, limit: number) {
+    const data = await this.productsRepository.findAndCount({
+      order: {
+        createdAt: 'ASC',
+      },
       skip,
       take: limit,
     });
+
+    return data;
+  }
+
+  async findAll(query: ProductQueryDto, user: UserEntity) {
+    const { skip, limit, page } = getPaginationParams(query);
+
+    // TODO: Рефакторинг
+    const [entities, total] = await this[user ? 'getAdminQuery' : 'getUserQuery'](skip, limit);
 
     const meta = getPaginationMeta({ total, limit, page });
 
     // TODO: Вынести генерацию на глобальный уровень + добавить функцию для генерации paginationResponse
     return {
-      list: plainToInstance(ProductOutDto, products),
+      list: plainToInstance(ProductOutDto, entities),
       meta,
     };
   }
 
-  findOne(id: string) {
-    return this.findOneByIdOrError(id);
+  async findOne(id: string) {
+    const entity = await this.findOneByIdOrError(id);
+
+    // TODO: Вынести на уровень @Transform
+    return {
+      ...entity,
+      consumables: entity.productConsumables.map(({ consumable, requiredCount }) => ({
+        requiredCount,
+        ...consumable,
+      })),
+    };
   }
 
   async update(id: string, updateProductDto: UpdateProductDto) {
     // TODO: Использовать возвращаемые данные из update для определения наличия записи
     await this.findOneByIdOrError(id);
 
-    await this.productsRepository.update({ id }, updateProductDto);
+    const { consumables, ...productUpdatedData } = updateProductDto;
+
+    if (Array.isArray(consumables)) {
+      await this.updateProductConsumable({ productId: id, consumables });
+    }
+
+    await this.productsRepository.save({
+      id,
+      ...productUpdatedData,
+    });
 
     return this.findOne(id);
   }
@@ -68,5 +148,84 @@ export class ProductsService {
     await this.findOneByIdOrError(id);
 
     return this.productsRepository.delete({ id });
+  }
+
+  // TODO: Вынести логику работы с ProductConsumables в отдельный сервис
+
+  // TODO: Лучше обернуть в транзакцию
+  async updateProductConsumable({ consumables, productId }: AddProductConsumableType) {
+    const existProductConsumables = await this.productsConsumablesRepository.find({
+      where: {
+        product: {
+          id: productId,
+        },
+      },
+      relations: {
+        consumable: true,
+      },
+    });
+
+    const newProductConsumables = consumables.filter(
+      (consumable) =>
+        !existProductConsumables.find(
+          (existConsumable) => existConsumable.consumable.id === consumable.id,
+        ),
+    );
+
+    if (newProductConsumables.length) {
+      await this.addConsumables({ productId, consumables: newProductConsumables });
+    }
+
+    const removedProductConsumables = existProductConsumables.filter(
+      (existConsumable) =>
+        !consumables.find((consumable) => existConsumable.consumable.id === consumable.id),
+    );
+
+    if (removedProductConsumables) {
+      await this.removeConsumables({
+        productId,
+        consumableIds: removedProductConsumables.map(({ consumable }) => consumable.id),
+      });
+    }
+  }
+
+  async addConsumables({ consumables, productId }: AddProductConsumableType) {
+    await this.checkConsumablesIsExistOrError(consumables.map(({ id }) => id));
+
+    const entities = consumables.map(({ requiredCount, ...consumable }) =>
+      this.productsConsumablesRepository.create({
+        product: {
+          id: productId,
+        },
+        consumable,
+        requiredCount,
+      }),
+    );
+
+    await this.productsConsumablesRepository.save(entities);
+  }
+
+  async removeConsumables({ consumableIds, productId }: RemoveProductConsumableType) {
+    await this.checkConsumablesIsExistOrError(consumableIds);
+
+    await this.productsConsumablesRepository.delete({
+      product: {
+        id: productId,
+      },
+      consumable: {
+        id: In(consumableIds),
+      },
+    });
+  }
+
+  async checkConsumablesIsExistOrError(consumableIds: string[]) {
+    const existConsumablesCount = await this.consumablesRepository.countBy({
+      id: In(consumableIds),
+    });
+
+    if (consumableIds.length !== existConsumablesCount) {
+      // TODO: Сделать более подробную ошибку с ids
+      throw ConsumablesException.NotFound();
+    }
   }
 }

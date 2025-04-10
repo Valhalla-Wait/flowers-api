@@ -10,6 +10,7 @@ import EnvConfig from '@/config/envConfig';
 import { GlobalJwtGuard } from '@/auth/guards/global-jwt.guard';
 import { runSeeds } from '@/database';
 import { FormatResponseInterceptor } from '@/interceptors/transform.interceptors';
+import { json } from 'express';
 
 function initializeSwaggerDocumentation(app: INestApplication) {
   const PATH = '/api/docs';
@@ -35,6 +36,7 @@ async function bootstrap(port: number) {
   const reflector = app.get(Reflector);
 
   app.setGlobalPrefix('api');
+  app.use(json({ limit: '5mb' }));
 
   app.useGlobalPipes(
     new ValidationPipe({

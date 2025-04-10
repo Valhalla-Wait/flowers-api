@@ -22,7 +22,13 @@ export class GlobalJwtGuard
   }
 
   public canActivate(context: ExecutionContext): boolean | Promise<boolean> | Observable<boolean> {
-    if (getMetaKey(this.reflector, context, IS_PUBLIC_KEY)) return true;
+    if (getMetaKey(this.reflector, context, IS_PUBLIC_KEY)) {
+      if (!this.isNotFoundTokens(context)) {
+        return super.canActivate(context);
+      }
+
+      return true;
+    }
 
     if (
       getMetaKey(this.reflector, context, IS_PROTECTED_PUBLIC_KEY) &&
