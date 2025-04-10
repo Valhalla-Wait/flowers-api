@@ -16,10 +16,11 @@ export class CreateProductDto {
   readonly price: number;
 
   @Expose()
+  @IsOptional()
   @IsArray()
   @Type(() => AddProductConsumableDto)
   @ApiProperty()
-  readonly consumables: AddProductConsumableDto[];
+  readonly consumables?: AddProductConsumableDto[];
 
   @Expose()
   @IsString()
