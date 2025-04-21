@@ -1,7 +1,8 @@
-import { Column, Entity } from 'typeorm';
+import { Column, Entity, OneToMany } from 'typeorm';
 
 import { BaseEntityWithDatesAndIdColumns } from '@/resources/base.entity';
 import { Roles } from '@/modules/users/types';
+import { CartEntity } from '@/modules/cart/entities/cart.entity';
 
 @Entity('users')
 export class UserEntity extends BaseEntityWithDatesAndIdColumns {
@@ -26,4 +27,7 @@ export class UserEntity extends BaseEntityWithDatesAndIdColumns {
 
   @Column({ type: 'uuid', nullable: true })
   lastAccessTokenId: string | null;
+
+  @OneToMany(() => CartEntity, (cart) => cart.user)
+  userCarts: CartEntity[];
 }

@@ -8,7 +8,7 @@ import {
 import { Public } from '@/auth/decorators/is-public';
 import { plainToInstance } from 'class-transformer';
 import { ProductDetailOutDto, ProductOutDto } from '@/modules/products/dto/product.out.dto';
-import { ParamUUID } from '@/decorators/paramuuid.decorator';
+import { ParamUUID } from '@/decorators/paramUuid.decorator';
 import { User } from '@/decorators/user.decorator';
 import { UserEntity } from '@/modules/users/entities/user.entity';
 

@@ -7,7 +7,7 @@ import {
 } from '@/modules/products/dto/product.in.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ProductEntity } from '@/modules/products/entities/product.entity';
-import { In, Repository } from 'typeorm';
+import { FindOptionsOrder, FindOptionsWhere, In, Repository } from 'typeorm';
 import { ProductsException } from '@/exceptions/products.exception';
 import getPaginationParams from '@/utils/getPaginationParams';
 import getPaginationMeta from '@/utils/getPaginationMeta';
@@ -25,6 +25,11 @@ type AddProductConsumableType = {
 
 type RemoveProductConsumableType = Pick<AddProductConsumableType, 'productId'> & {
   consumableIds: string[];
+};
+
+type GetProductsQueryOptions = {
+  where?: FindOptionsWhere<ProductEntity> | FindOptionsWhere<ProductEntity>[];
+  order?: FindOptionsOrder<ProductEntity>;
 };
 
 @Injectable()
@@ -62,8 +67,8 @@ export class ProductsService {
     return this.productsRepository.save(productEntity);
   }
 
-  private async getUserQuery(skip: number, limit: number) {
-    const data = this.productsRepository
+  private async getUserQuery(skip: number, limit: number, options?: GetProductsQueryOptions) {
+    const query = this.productsRepository
       .createQueryBuilder('products')
       .where('nullable is null and is_available = true')
       .leftJoin('products.productConsumables', 'productConsumables')
@@ -79,16 +84,24 @@ export class ProductsService {
         'nullable.product_id = products.id',
       )
       .leftJoin('productConsumables.consumable', 'consumables')
-      .orderBy('products.createdAt', 'ASC')
-      .skip(skip)
-      .take(limit);
+      .orderBy('products.createdAt', 'ASC');
 
-    return data.getManyAndCount();
+    query.where('nullable is null and is_available = true');
+    if (options?.where) query.andWhere(options.where);
+
+    // TODO: Настроить запрос под админа и под пользователя
+
+    // if (options?.order) {
+    //   query.orderBy(options.order);
+    // }
+
+    return query.skip(skip).take(limit).getManyAndCount();
   }
 
-  private async getAdminQuery(skip: number, limit: number) {
+  private async getAdminQuery(skip: number, limit: number, options?: GetProductsQueryOptions) {
     const data = await this.productsRepository.findAndCount({
-      order: {
+      where: options?.where ?? null,
+      order: options?.order ?? {
         createdAt: 'ASC',
       },
       skip,
@@ -102,7 +115,11 @@ export class ProductsService {
     const { skip, limit, page } = getPaginationParams(query);
 
     // TODO: Рефакторинг
-    const [entities, total] = await this[user ? 'getAdminQuery' : 'getUserQuery'](skip, limit);
+    const [entities, total] = await this[user ? 'getAdminQuery' : 'getUserQuery'](skip, limit, {
+      // productConsumables: {
+      //   consumable: true,
+      // },
+    });
 
     const meta = getPaginationMeta({ total, limit, page });
 
