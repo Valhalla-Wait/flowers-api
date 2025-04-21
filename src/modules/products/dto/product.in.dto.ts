@@ -48,4 +48,9 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
   isAvailable?: boolean;
 }
 
-export class ProductQueryDto extends PaginationQueryDto {}
+export class ProductQueryDto extends PaginationQueryDto {
+  @IsArray()
+  @Type(() => IsUUID(4))
+  @IsOptional()
+  consumableIds?: string[];
+}
