@@ -1,7 +1,15 @@
 import { PaginationQueryDto } from '@/common/dto/pagination.in.dto';
 import { ApiProperty, PartialType } from '@nestjs/swagger';
 import { Exclude, Expose, Type } from 'class-transformer';
-import { IsArray, IsBoolean, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsArray,
+  IsBoolean,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 @Exclude()
 export class CreateProductDto {
@@ -11,7 +19,7 @@ export class CreateProductDto {
   readonly title: string;
 
   @Expose()
-  @IsNumber()
+  @IsPositive()
   @ApiProperty()
   readonly price: number;
 

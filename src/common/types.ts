@@ -1,4 +1,5 @@
 import { Type } from '@nestjs/common';
+import { ClassTransformOptions } from 'class-transformer';
 
 //
 // Utility types ↴
@@ -35,3 +36,6 @@ export type ApiResponseDocumentation = {
   type?: Type<unknown>;
   withPagination?: boolean;
 };
+
+//TODO: Сделать через declare
+export type CustomClassTransformOptions = ClassTransformOptions & { customPrice?: number };

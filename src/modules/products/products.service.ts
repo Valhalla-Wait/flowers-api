@@ -15,7 +15,7 @@ import { plainToInstance } from 'class-transformer';
 import { ProductOutDto } from '@/modules/products/dto/product.out.dto';
 import { ConsumableEntity } from '@/modules/consumables/entities/consumable.entity';
 import { ConsumablesException } from '@/exceptions/consumables.exception';
-import { ProductConsumablesEntity } from '@/modules/products/entities/productConsumables.entity';
+import { ProductConsumableEntity } from '@/modules/products/entities/productConsumables.entity';
 import { UserEntity } from '@/modules/users/entities/user.entity';
 
 type AddProductConsumableType = {
@@ -39,8 +39,8 @@ export class ProductsService {
     private readonly productsRepository: Repository<ProductEntity>,
     @InjectRepository(ConsumableEntity)
     private readonly consumablesRepository: Repository<ConsumableEntity>,
-    @InjectRepository(ProductConsumablesEntity)
-    private readonly productsConsumablesRepository: Repository<ProductConsumablesEntity>,
+    @InjectRepository(ProductConsumableEntity)
+    private readonly productsConsumablesRepository: Repository<ProductConsumableEntity>,
   ) {}
 
   private Exception = ProductsException;
@@ -69,31 +69,32 @@ export class ProductsService {
 
   private async getUserQuery(skip: number, limit: number, options?: GetProductsQueryOptions) {
     const query = this.productsRepository
-      .createQueryBuilder('products')
-      .where('nullable is null and is_available = true')
-      .leftJoin('products.productConsumables', 'productConsumables')
-      .leftJoinAndSelect(
-        (qb) =>
-          qb
-            .select()
-            .from(ProductConsumablesEntity, 'p')
-            .leftJoin('p.consumable', 'consumables')
-            .limit(1)
-            .where('consumables.count < p.requiredCount'),
-        'nullable',
-        'nullable.product_id = products.id',
-      )
-      .leftJoin('productConsumables.consumable', 'consumables')
-      .orderBy('products.createdAt', 'ASC');
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.productConsumables', 'productConsumable')
+      .leftJoinAndSelect('productConsumable.consumable', 'consumable')
+      .where((qb) => {
+        const subQuery = qb
+          .subQuery()
+          .select('1')
+          .from('product_consumables', 'pc')
+          .innerJoin('pc.consumable', 'c')
+          .where('pc.product_id = product.id')
+          .andWhere('c.count < pc.requiredCount')
+          .getQuery();
+        return `NOT EXISTS (${subQuery})`;
+      })
+      .andWhere((qb) => {
+        const existsSubQuery = qb
+          .subQuery()
+          .select('1')
+          .from('product_consumables', 'pc')
+          .where('pc.product_id = product.id')
+          .getQuery();
+        return `EXISTS (${existsSubQuery})`;
+      })
+      .orWhere('product.isAvailable = true');
 
-    query.where('nullable is null and is_available = true');
     if (options?.where) query.andWhere(options.where);
-
-    // TODO: Настроить запрос под админа и под пользователя
-
-    // if (options?.order) {
-    //   query.orderBy(options.order);
-    // }
 
     return query.skip(skip).take(limit).getManyAndCount();
   }
@@ -115,11 +116,7 @@ export class ProductsService {
     const { skip, limit, page } = getPaginationParams(query);
 
     // TODO: Рефакторинг
-    const [entities, total] = await this[user ? 'getAdminQuery' : 'getUserQuery'](skip, limit, {
-      // productConsumables: {
-      //   consumable: true,
-      // },
-    });
+    const [entities, total] = await this[user ? 'getAdminQuery' : 'getUserQuery'](skip, limit);
 
     const meta = getPaginationMeta({ total, limit, page });
 
