@@ -2,29 +2,33 @@ import { ProductCartOutDto } from '@/modules/cart/dto/cart.out.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose, plainToInstance, Transform } from 'class-transformer';
 import { OrderStatus } from '@/modules/orders/entities/order.entity';
-import { ProductOutDto } from '@/modules/products/dto/product.out.dto';
 import { CustomClassTransformOptions } from '@/common/types';
+import { IdWithDatesOutDto } from '@/common/dto/common.out.dto';
 
 @Exclude()
-export class OrderProductOutDto extends ProductCartOutDto {
+export class OrderProductOutDto extends ProductCartOutDto {}
+
+@Exclude()
+export class OrderOutDto extends IdWithDatesOutDto {
   @Expose()
   @ApiProperty({
     enum: OrderStatus,
   })
-  @Transform(({ obj }) => obj.order.status)
   status: OrderStatus;
 
   @Expose()
   @ApiProperty()
   @Transform(({ obj }) =>
-    plainToInstance(ProductOutDto, obj.product, {
+    plainToInstance(OrderProductOutDto, obj.orderProducts, {
       customPrice: obj.price,
     } as CustomClassTransformOptions),
   )
-  product: ProductOutDto;
+  products: OrderProductOutDto;
 
   @Expose()
   @ApiProperty()
-  @Transform(({ obj }) => obj.count * obj.price)
-  productTotalPrice: number;
+  @Transform(({ obj }) =>
+    obj.orderProducts.reduce((totalPrice, { count, price }) => totalPrice + count * price, 0),
+  )
+  totalPrice: number;
 }

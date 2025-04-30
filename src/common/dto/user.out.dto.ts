@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude, Expose } from 'class-transformer';
-import { DatesOutDto } from '@/common/dto/dates.out.dto';
+import { DatesOutDto } from '@/common/dto/common.out.dto';
 
 @Exclude()
 export class UserOutDto extends DatesOutDto {

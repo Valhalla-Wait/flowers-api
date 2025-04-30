@@ -13,7 +13,7 @@ import getPaginationMeta from '@/utils/getPaginationMeta';
 import { ProductConsumableEntity } from '@/modules/products/entities/productConsumables.entity';
 import { ConsumableEntity } from '@/modules/consumables/entities/consumable.entity';
 import { plainToInstance } from 'class-transformer';
-import { OrderProductOutDto } from '@/modules/orders/dto/order.out.dto';
+import { OrderOutDto, OrderProductOutDto } from '@/modules/orders/dto/order.out.dto';
 
 type ConsumablesCountDataType = Record<
   string,
@@ -358,15 +358,16 @@ export class OrdersService {
       };
     }
 
-    const [entities, total] = await this.ordersProductsRepository.findAndCount({
+    const [entities, total] = await this.ordersRepository.findAndCount({
       where: { ...where },
       relations: {
-        product: {
-          productConsumables: {
-            consumable: true,
+        orderProducts: {
+          product: {
+            productConsumables: {
+              consumable: true,
+            },
           },
         },
-        order: true,
       },
       skip,
       take: limit,
@@ -375,14 +376,8 @@ export class OrdersService {
     const meta = getPaginationMeta({ total, limit, page });
 
     return {
-      // TODO: Вынести DTO, обрезать productConsumables
-      list: plainToInstance(OrderProductOutDto, entities),
+      list: plainToInstance(OrderOutDto, entities),
       meta,
-      totalPrice: entities.reduce((totalOrderPrice, { count, price }) => {
-        const cartProductTotalPrice = price * count;
-
-        return totalOrderPrice + cartProductTotalPrice;
-      }, 0),
     };
   }
 

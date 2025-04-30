@@ -1,4 +1,4 @@
-import { DatesOutDto } from '@/common/dto/dates.out.dto';
+import { DatesOutDto } from '@/common/dto/common.out.dto';
 import { ProductOutDto } from '@/modules/products/dto/product.out.dto';
 import { ApiProperty, OmitType } from '@nestjs/swagger';
 import { Exclude, Expose, Transform, Type } from 'class-transformer';
