@@ -18,4 +18,9 @@ export class ProductCartOutDto extends DatesOutDto {
   @ApiProperty()
   @Transform(({ obj }) => obj.count * obj.product.price)
   productTotalPrice: number;
+
+  @Expose()
+  @ApiProperty()
+  @Transform(({ obj }) => obj.cart.user.phone)
+  phone: number;
 }

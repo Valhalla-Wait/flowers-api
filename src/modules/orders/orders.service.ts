@@ -38,6 +38,21 @@ export class OrdersService {
 
   private Exception = OrdersException;
 
+  private async findByIdOrError(id: string) {
+    const found = await this.ordersRepository.findOne({
+      where: {
+        id,
+      },
+      relations: {},
+    });
+
+    if (!found) {
+      throw this.Exception.OrderNotFound();
+    }
+
+    return found;
+  }
+
   private calculateRemainderOfConsumables(cartProducts: OrderProductEntity[]) {
     const consumablesCountsByIds: ConsumablesCountDataType = {};
 
@@ -224,6 +239,8 @@ export class OrdersService {
   }
 
   async accept(orderId: string) {
+    await this.findByIdOrError(orderId);
+
     try {
       await this.dataSource.transaction(async (manager) => {
         await manager.update(
@@ -264,6 +281,8 @@ export class OrdersService {
   }
 
   async cancel(orderId: string) {
+    const existOrder = await this.findByIdOrError(orderId);
+
     try {
       await this.dataSource.transaction(async (manager) => {
         await manager.update(
@@ -276,24 +295,26 @@ export class OrdersService {
           },
         );
 
-        const orderProducts = await manager.find(OrderProductEntity, {
-          where: {
-            order: {
-              id: orderId,
-            },
-          },
-          relations: {
-            product: {
-              productConsumables: {
-                consumable: true,
+        // TODO: Если нехватает расходников на товары, то вывести на фронте уведомление админу при принятии заказа
+        // NOTE: Оставлена возможность принудительного принятия заказа даже при отсутствии расходников
+        if ([OrderStatus.IN_WORK, OrderStatus.DELIVERY].includes(existOrder.status)) {
+          const orderProducts = await manager.find(OrderProductEntity, {
+            where: {
+              order: {
+                id: orderId,
               },
             },
-          },
-        });
+            relations: {
+              product: {
+                productConsumables: {
+                  consumable: true,
+                },
+              },
+            },
+          });
 
-        //! Если нехватает расходников на товары, то вывести на фронте уведомление админу при принятии заказа
-        //! Оставлена возможность принудительного принятия заказа даже при отсутствии расходников
-        await this.updateConsumablesCount(manager, orderProducts, OrderStatus.CANCELED);
+          await this.updateConsumablesCount(manager, orderProducts, OrderStatus.CANCELED);
+        }
       });
     } catch (error) {
       Logger.error(`CANCEL ORDER ERROR: ${error}`);
@@ -303,6 +324,8 @@ export class OrdersService {
   }
 
   async complete(orderId: string) {
+    await this.findByIdOrError(orderId);
+
     try {
       await this.ordersRepository.update(
         {
@@ -320,15 +343,39 @@ export class OrdersService {
   }
 
   async delivery(orderId: string) {
+    const existOrder = await this.findByIdOrError(orderId);
+
     try {
-      await this.ordersRepository.update(
-        {
-          id: orderId,
-        },
-        {
-          status: OrderStatus.DELIVERY,
-        },
-      );
+      await this.dataSource.transaction(async (manager) => {
+        await manager.update(
+          OrderEntity,
+          {
+            id: orderId,
+          },
+          {
+            status: OrderStatus.DELIVERY,
+          },
+        );
+
+        if ([OrderStatus.IN_PROCESS, OrderStatus.CANCELED].includes(existOrder.status)) {
+          const orderProducts = await manager.find(OrderProductEntity, {
+            where: {
+              order: {
+                id: orderId,
+              },
+            },
+            relations: {
+              product: {
+                productConsumables: {
+                  consumable: true,
+                },
+              },
+            },
+          });
+
+          await this.updateConsumablesCount(manager, orderProducts, OrderStatus.IN_WORK);
+        }
+      });
     } catch (error) {
       Logger.error(`SET DELIVERY ORDER ERROR: ${error}`);
 
@@ -361,6 +408,7 @@ export class OrdersService {
     const [entities, total] = await this.ordersRepository.findAndCount({
       where: { ...where },
       relations: {
+        user: true,
         orderProducts: {
           product: {
             productConsumables: {

@@ -16,4 +16,18 @@ export class AuthException {
   static WrongCode() {
     return new HttpException('Неверный код доступа', HttpStatus.BAD_REQUEST);
   }
+
+  static UserWithPhoneAlreadyExist() {
+    return new HttpException(
+      'Пользователь с таким номером телефона уже зарегистрирован',
+      HttpStatus.CONFLICT,
+    );
+  }
+
+  static RegisterUserError() {
+    return new HttpException(
+      'Ошибка при регистрации пользователя. Пожалуйста, попробуйте позже',
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
 }

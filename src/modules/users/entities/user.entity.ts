@@ -7,10 +7,14 @@ import { OrderEntity } from '@/modules/orders/entities/order.entity';
 
 @Entity('users')
 export class UserEntity extends BaseEntityWithDatesAndIdColumns {
-  @Column()
+  @Column({
+    nullable: true,
+  })
   firstName: string;
 
-  @Column()
+  @Column({
+    nullable: true,
+  })
   lastName: string;
 
   @Column({
@@ -23,12 +27,14 @@ export class UserEntity extends BaseEntityWithDatesAndIdColumns {
 
   @Column({
     enum: Roles,
+    default: Roles.USER,
   })
   role: Roles;
 
   @Column({ type: 'uuid', nullable: true })
   lastAccessTokenId: string | null;
 
+  //! CHECK THIS
   @OneToMany(() => CartEntity, (cart) => cart.user)
   userCarts: CartEntity[];
 

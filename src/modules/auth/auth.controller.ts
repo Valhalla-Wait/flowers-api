@@ -3,7 +3,11 @@ import { plainToInstance } from 'class-transformer';
 import { Controller, Post, Body, Get, Res } from '@nestjs/common';
 
 import { UserOutDto } from '@/common/dto/user.out.dto';
-import { LoginUserInDto, ResetPasswordInDto } from '@/modules/auth/dto/auth.in.dto';
+import {
+  LoginUserInDto,
+  RegisterUserInDto,
+  ResetPasswordInDto,
+} from '@/modules/auth/dto/auth.in.dto';
 import { OutputAuth } from '@/modules/auth/dto/auth.out.dto';
 
 import { User } from '@/decorators/user.decorator';
@@ -39,11 +43,14 @@ export class AuthController {
   }
 
   @Post('sign-up')
+  @Public({
+    withoutAdminProtection: true,
+  })
   @ApiDocumentation({
     type: OutputAuth,
     summary: 'Регистрация пользователя в системе',
   })
-  async register(@Body() data: LoginUserInDto, @Res() res: Response) {
+  async register(@Body() data: RegisterUserInDto, @Res() res: Response) {
     const { user, ...tokens } = await this.authService.registerUser(data);
 
     for (const token in tokens) {
@@ -53,13 +60,13 @@ export class AuthController {
     return res.send(plainToInstance(OutputAuth, { data: user }));
   }
 
-  @Post('reset')
+  @Post('reset-admin')
   @ApiDocumentation({
     type: OutputAuth,
     summary: 'Сбросить пароль',
   })
   async resetPassword(@Body() data: ResetPasswordInDto) {
-    return this.authService.resetPassword(data);
+    return this.authService.resetAdminPassword(data);
   }
 
   @Post('logout')
