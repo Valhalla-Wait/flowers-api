@@ -3,8 +3,8 @@ import { ProductEntity } from '@/modules/products/entities/product.entity';
 import { ConsumableEntity } from '@/modules/consumables/entities/consumable.entity';
 import { BaseEntityWithDatesAndIdColumns } from '@/resources/base.entity';
 
-@Entity('productConsumables')
-export class ProductConsumablesEntity extends BaseEntityWithDatesAndIdColumns {
+@Entity('product_consumables')
+export class ProductConsumableEntity extends BaseEntityWithDatesAndIdColumns {
   @Column()
   requiredCount: number;
 

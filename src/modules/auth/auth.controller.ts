@@ -2,7 +2,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { plainToInstance } from 'class-transformer';
 import { Controller, Post, Body, Get, Res } from '@nestjs/common';
 
-import { OutputUser } from '@/common/dto';
+import { UserOutDto } from '@/common/dto/user.out.dto';
 import { LoginUserInDto, ResetPasswordInDto } from '@/modules/auth/dto/auth.in.dto';
 import { OutputAuth } from '@/modules/auth/dto/auth.out.dto';
 
@@ -79,10 +79,10 @@ export class AuthController {
 
   @Get('/me')
   @ApiDocumentation({
-    type: OutputUser,
+    type: UserOutDto,
     summary: 'Получить информацию о пользователе',
   })
   getInfo(@User() user: UserEntity) {
-    return plainToInstance(OutputUser, user);
+    return plainToInstance(UserOutDto, user);
   }
 }

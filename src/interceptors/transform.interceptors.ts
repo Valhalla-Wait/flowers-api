@@ -3,6 +3,7 @@ import { map } from 'rxjs/operators';
 
 import { ApiResponse, ApiResponseWithPagination } from 'src/common/types';
 import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import { ApiSuccessResponse } from '@/common/ApiSuccessResponse';
 
 const isResponseWithPagination = (response): response is ApiResponseWithPagination<unknown> => {
   if (typeof response !== 'object') return false;
@@ -28,6 +29,10 @@ const transformDataToApiResponse = <T>(
         total: result.length,
       },
     };
+  }
+
+  if (!result) {
+    return ApiSuccessResponse();
   }
 
   return {

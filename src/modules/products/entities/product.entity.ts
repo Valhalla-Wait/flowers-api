@@ -1,7 +1,8 @@
 import { BaseEntityWithDatesAndIdColumns } from '@/resources/base.entity';
 import { Column, Entity, OneToMany } from 'typeorm';
-import { ProductConsumablesEntity } from '@/modules/products/entities/productConsumables.entity';
-import { CartEntity } from '@/modules/cart/entities/cart.entity';
+import { ProductConsumableEntity } from '@/modules/products/entities/productConsumables.entity';
+import { CartProductEntity } from '@/modules/cart/entities/cartProduct.entity';
+import { OrderProductEntity } from '@/modules/orders/entities/orderProduct.entity';
 
 @Entity('products')
 export class ProductEntity extends BaseEntityWithDatesAndIdColumns {
@@ -19,9 +20,12 @@ export class ProductEntity extends BaseEntityWithDatesAndIdColumns {
   })
   isAvailable: boolean;
 
-  @OneToMany(() => CartEntity, (cart) => cart.product)
-  productCarts: CartEntity[];
+  @OneToMany(() => CartProductEntity, (cartProduct) => cartProduct.product)
+  cartProducts: CartProductEntity[];
 
-  @OneToMany(() => ProductConsumablesEntity, (productConsumables) => productConsumables.product)
-  productConsumables: ProductConsumablesEntity[];
+  @OneToMany(() => OrderProductEntity, (orderProduct) => orderProduct.product)
+  orderProducts: OrderProductEntity[];
+
+  @OneToMany(() => ProductConsumableEntity, (productConsumables) => productConsumables.product)
+  productConsumables: ProductConsumableEntity[];
 }

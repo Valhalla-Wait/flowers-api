@@ -3,6 +3,7 @@ import { Column, Entity, OneToMany } from 'typeorm';
 import { BaseEntityWithDatesAndIdColumns } from '@/resources/base.entity';
 import { Roles } from '@/modules/users/types';
 import { CartEntity } from '@/modules/cart/entities/cart.entity';
+import { OrderEntity } from '@/modules/orders/entities/order.entity';
 
 @Entity('users')
 export class UserEntity extends BaseEntityWithDatesAndIdColumns {
@@ -30,4 +31,7 @@ export class UserEntity extends BaseEntityWithDatesAndIdColumns {
 
   @OneToMany(() => CartEntity, (cart) => cart.user)
   userCarts: CartEntity[];
+
+  @OneToMany(() => OrderEntity, (cart) => cart.user)
+  userOrders: OrderEntity[];
 }

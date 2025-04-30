@@ -9,7 +9,14 @@ export class CartException {
     return new HttpException('Товар не найден', HttpStatus.NOT_FOUND);
   }
 
-  static AlreadyInCart() {
+  static ProductAlreadyInCart() {
     return new HttpException('Данный товар уже добавлен в корзину', HttpStatus.CONFLICT);
+  }
+
+  static ProductCountIsNotAvailable(availableProductCount: number) {
+    return new HttpException(
+      `Выбранное количество товара превышает доступное количество на складе. Доступно: ${availableProductCount}`,
+      HttpStatus.CONFLICT,
+    );
   }
 }
