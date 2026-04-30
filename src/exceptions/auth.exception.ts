@@ -9,8 +9,8 @@ export class AuthException {
     return new HttpException('Доступ запрещён', HttpStatus.FORBIDDEN);
   }
 
-  static WrongPassword() {
-    return new HttpException('Неверный пароль', HttpStatus.BAD_REQUEST);
+  static WrongPhoneOrPassword() {
+    return new HttpException('Неверный номер телефона или пароль', HttpStatus.BAD_REQUEST);
   }
 
   static WrongCode() {
@@ -27,6 +27,13 @@ export class AuthException {
   static RegisterUserError() {
     return new HttpException(
       'Ошибка при регистрации пользователя. Пожалуйста, попробуйте позже',
+      HttpStatus.INTERNAL_SERVER_ERROR,
+    );
+  }
+
+  static UniversalAuthError() {
+    return new HttpException(
+      'Не удалось войти по данному номеру',
       HttpStatus.INTERNAL_SERVER_ERROR,
     );
   }

@@ -13,6 +13,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { UserTokenPayload } from '@/auth/types';
 import {
+  LoginAdminInDto,
   LoginUserInDto,
   RegisterUserInDto,
   ResetPasswordInDto,
@@ -20,6 +21,8 @@ import {
 import { Passworder } from '@/lib/Passworder';
 import { Roles } from '@/modules/users/types';
 import { CartEntity } from '@/modules/cart/entities/cart.entity';
+import { CartService } from '@/modules/cart/cart.service';
+import { MergedCartDataType } from '@/common/types';
 
 @Injectable()
 export class AuthService {
@@ -28,6 +31,7 @@ export class AuthService {
     private readonly usersRepository: Repository<UserEntity>,
 
     private readonly usersService: UsersService,
+    private readonly cartService: CartService,
     private readonly jwtService: JwtService,
     private readonly dataSource: DataSource,
   ) {}
@@ -68,13 +72,43 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  public async loginUser({ role, password }: LoginUserInDto) {
+  public async login({ phone, password, tempCartProducts }: LoginUserInDto) {
+    let mergedCartData: MergedCartDataType;
+
     const user = await this.usersRepository.findOneBy({
-      role: role ?? Roles.USER,
+      phone,
+      role: Roles.USER,
     });
 
+    if (!user) {
+      throw AuthException.WrongPhoneOrPassword();
+    }
+
     if (!(await Passworder.validatePassword(password, user.password))) {
-      throw this.Exception.WrongPassword();
+      throw this.Exception.WrongPhoneOrPassword();
+    }
+
+    const tokens = await this.generateTokens(user);
+
+    if (tempCartProducts?.length) {
+      mergedCartData = await this.cartService.mergeTempCart(user.id, tempCartProducts);
+    }
+
+    return { ...tokens, user, ...mergedCartData };
+  }
+
+  public async adminLogin({ phone, password }: LoginAdminInDto) {
+    const user = await this.usersRepository.findOneBy({
+      phone,
+      role: Roles.ADMIN,
+    });
+
+    if (!user) {
+      throw AuthException.WrongPhoneOrPassword();
+    }
+
+    if (!(await Passworder.validatePassword(password, user.password))) {
+      throw this.Exception.WrongPhoneOrPassword();
     }
 
     const tokens = await this.generateTokens(user);
@@ -99,7 +133,9 @@ export class AuthService {
     return { message: 'Success' };
   }
 
-  public async registerUser({ phone, password }: RegisterUserInDto) {
+  public async register({ phone, password, tempCartProducts }: RegisterUserInDto) {
+    let mergedCartData: MergedCartDataType;
+
     const existUser = await this.usersRepository.findOne({
       where: {
         phone,
@@ -131,9 +167,14 @@ export class AuthService {
       }
     });
 
+    if (tempCartProducts?.length) {
+      mergedCartData = await this.cartService.mergeTempCart(user.id, tempCartProducts);
+    }
+
     const tokens = await this.generateTokens(user);
 
-    return { ...tokens, user };
+    // TODO: А нужно ли возвращать токены если они в куках ставятся?
+    return { ...tokens, user, ...mergedCartData };
   }
 
   public async logoutUser(user: UserEntity) {

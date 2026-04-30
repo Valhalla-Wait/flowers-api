@@ -7,7 +7,7 @@ import {
 } from '@/modules/products/dto/product.in.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ProductEntity } from '@/modules/products/entities/product.entity';
-import { FindOptionsOrder, FindOptionsWhere, In, Repository } from 'typeorm';
+import { Brackets, FindOptionsOrder, FindOptionsWhere, In, Repository } from 'typeorm';
 import { ProductsException } from '@/exceptions/products.exception';
 import getPaginationParams from '@/utils/getPaginationParams';
 import getPaginationMeta from '@/utils/getPaginationMeta';
@@ -17,6 +17,7 @@ import { ConsumableEntity } from '@/modules/consumables/entities/consumable.enti
 import { ConsumablesException } from '@/exceptions/consumables.exception';
 import { ProductConsumableEntity } from '@/modules/products/entities/productConsumables.entity';
 import { UserEntity } from '@/modules/users/entities/user.entity';
+import { Roles } from '../users/types';
 
 type AddProductConsumableType = {
   productId: string;
@@ -64,46 +65,90 @@ export class ProductsService {
 
   async create(createProductDto: CreateProductDto) {
     const productEntity = this.productsRepository.create(createProductDto);
-    return this.productsRepository.save(productEntity);
+    await this.productsRepository.save(productEntity);
+
+    return this.productsRepository.findOne({
+      where: {
+        id: productEntity.id,
+      },
+      relations: {
+        productConsumables: {
+          consumable: true,
+        },
+      },
+    });
   }
 
-  private async getUserQuery(skip: number, limit: number, options?: GetProductsQueryOptions) {
+  private async getUserQuery(
+    skip: number,
+    limit: number,
+    options?: {
+      ids: string[];
+    },
+  ) {
     const query = this.productsRepository
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.productConsumables', 'productConsumable')
-      .leftJoinAndSelect('productConsumable.consumable', 'consumable')
-      .where((qb) => {
-        const subQuery = qb
-          .subQuery()
-          .select('1')
-          .from('product_consumables', 'pc')
-          .innerJoin('pc.consumable', 'c')
-          .where('pc.product_id = product.id')
-          .andWhere('c.count < pc.requiredCount')
-          .getQuery();
-        return `NOT EXISTS (${subQuery})`;
-      })
-      .andWhere((qb) => {
-        const existsSubQuery = qb
-          .subQuery()
-          .select('1')
-          .from('product_consumables', 'pc')
-          .where('pc.product_id = product.id')
-          .getQuery();
-        return `EXISTS (${existsSubQuery})`;
-      })
-      .orWhere('product.isAvailable = true');
+      .leftJoinAndSelect('productConsumable.consumable', 'consumable');
 
-    if (options?.where) query.andWhere(options.where);
+    query.where(
+      new Brackets((qb) => {
+        // TODO: Протестить, вроде неактуально, во втором условии дублируются условия
+        // .where((qb) => {
+        //   const subQuery = qb
+        //     .subQuery()
+        //     .select('1')
+        //     .from('product_consumables', 'pc')
+        //     .innerJoin('pc.consumable', 'c')
+        //     .where('pc.product_id = product.id')
+        //     .andWhere('c.count < pc.requiredCount')
+        //     .getQuery();
+        //   return `NOT EXISTS (${subQuery})`;
+        // })
+        qb.where((qbSub) => {
+          const existsSubQuery = qbSub
+            .subQuery()
+            .select('1')
+            .from('product_consumables', 'pc')
+            .where('pc.product_id = product.id')
+            .getQuery();
+          return `EXISTS (${existsSubQuery})`;
+        }).orWhere('product.isAvailable = true');
+      }),
+    );
+
+    if (options?.ids) {
+      query.andWhere('product.id IN (:...ids)', {
+        ids: options.ids,
+      });
+    }
 
     return query.skip(skip).take(limit).getManyAndCount();
   }
 
-  private async getAdminQuery(skip: number, limit: number, options?: GetProductsQueryOptions) {
+  private async getAdminQuery(
+    skip: number,
+    limit: number,
+    options?: {
+      ids: string[];
+      order?: FindOptionsOrder<ProductEntity>;
+    },
+  ) {
+    const where: FindOptionsWhere<ProductEntity> = {};
+
+    if (options) {
+      where.id = In(options.ids);
+    }
+
     const data = await this.productsRepository.findAndCount({
-      where: options?.where ?? null,
+      where,
       order: options?.order ?? {
         createdAt: 'ASC',
+      },
+      relations: {
+        productConsumables: {
+          consumable: true,
+        },
       },
       skip,
       take: limit,
@@ -112,11 +157,17 @@ export class ProductsService {
     return data;
   }
 
-  async findAll(query: ProductQueryDto, user: UserEntity) {
+  async findAll({ ids, ...query }: ProductQueryDto, user: UserEntity) {
     const { skip, limit, page } = getPaginationParams(query);
 
+    let options: { ids: string[]; order?: FindOptionsOrder<ProductEntity> };
+
+    if (ids) options.ids = ids;
+
     // TODO: Рефакторинг
-    const [entities, total] = await this[user ? 'getAdminQuery' : 'getUserQuery'](skip, limit);
+    const [entities, total] = await this[
+      user?.role === Roles.ADMIN ? 'getAdminQuery' : 'getUserQuery'
+    ](skip, limit, options);
 
     const meta = getPaginationMeta({ total, limit, page });
 

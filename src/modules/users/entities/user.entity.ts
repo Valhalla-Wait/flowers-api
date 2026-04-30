@@ -4,6 +4,7 @@ import { BaseEntityWithDatesAndIdColumns } from '@/resources/base.entity';
 import { Roles } from '@/modules/users/types';
 import { CartEntity } from '@/modules/cart/entities/cart.entity';
 import { OrderEntity } from '@/modules/orders/entities/order.entity';
+import { FavoriteEntity } from '@/modules/favorites/entities/favorite.entity';
 
 @Entity('users')
 export class UserEntity extends BaseEntityWithDatesAndIdColumns {
@@ -40,4 +41,7 @@ export class UserEntity extends BaseEntityWithDatesAndIdColumns {
 
   @OneToMany(() => OrderEntity, (cart) => cart.user)
   userOrders: OrderEntity[];
+
+  @OneToMany(() => FavoriteEntity, (favorite) => favorite.user)
+  favorites: FavoriteEntity[];
 }

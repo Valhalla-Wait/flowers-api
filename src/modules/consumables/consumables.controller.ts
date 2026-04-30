@@ -38,8 +38,5 @@ export class ConsumablesController {
   @Delete(':id')
   async remove(@Param('id') id: string) {
     await this.consumablesService.remove(id);
-    return {
-      message: 'Success',
-    };
   }
 }

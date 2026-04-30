@@ -1,7 +1,7 @@
-import { IsEnum, IsOptional, IsPhoneNumber, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { Exclude, Expose } from 'class-transformer';
-import { Roles } from '@/modules/users/types';
+import { IsArray, IsOptional, IsPhoneNumber, IsString } from 'class-validator';
+import { ApiProperty, OmitType } from '@nestjs/swagger';
+import { Exclude, Expose, Type } from 'class-transformer';
+import { AddToCartDto } from '@/modules/cart/dto/cart.in.dto';
 
 @Exclude()
 export class RegisterUserInDto {
@@ -14,22 +14,20 @@ export class RegisterUserInDto {
   @IsString()
   @ApiProperty()
   readonly password: string;
+
+  @Expose()
+  @IsOptional()
+  @IsArray()
+  @Type(() => AddToCartDto)
+  @ApiProperty()
+  readonly tempCartProducts?: AddToCartDto[];
 }
 
 @Exclude()
-export class LoginUserInDto extends RegisterUserInDto {
-  @Expose()
-  @IsEnum(Roles)
-  @IsOptional()
-  @ApiProperty()
-  readonly role?: Roles;
+export class LoginUserInDto extends RegisterUserInDto {}
 
-  @Expose()
-  @IsString()
-  @IsOptional()
-  @ApiProperty()
-  readonly code?: string;
-}
+@Exclude()
+export class LoginAdminInDto extends OmitType(RegisterUserInDto, ['tempCartProducts']) {}
 
 @Exclude()
 export class ResetPasswordInDto {

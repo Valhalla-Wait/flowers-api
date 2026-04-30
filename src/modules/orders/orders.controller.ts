@@ -3,35 +3,41 @@ import { OrdersService } from '@/modules/orders/orders.service';
 import { User } from '@/decorators/user.decorator';
 import { UserEntity } from '@/modules/users/entities/user.entity';
 import { OrdersQueryDto } from '@/modules/orders/dto/order.in.dto';
+import { plainToInstance } from 'class-transformer';
+import { OrderOutDto } from '@/modules/orders/dto/order.out.dto';
 
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
-  createOrder(@User() user: UserEntity) {
-    return this.ordersService.create(user.id);
+  async createOrder(@User() user: UserEntity) {
+    const entity = await this.ordersService.create(user.id);
+    return plainToInstance(OrderOutDto, entity);
   }
 
-  @Post(':orderId')
+  @Post('accept/:orderId')
   async acceptOrder(@Param('orderId') orderId: string) {
-    await this.ordersService.create(orderId);
+    await this.ordersService.accept(orderId);
   }
-  @Post(':orderId')
+
+  @Post('complete/:orderId')
   async completeOrder(@Param('orderId') orderId: string) {
     await this.ordersService.complete(orderId);
   }
-  @Post(':orderId')
+
+  @Post('delivery/:orderId')
   async setDeliveryOrder(@Param('orderId') orderId: string) {
     await this.ordersService.delivery(orderId);
   }
-  @Delete(':orderId')
+
+  @Delete('cancel/:orderId')
   async cancelOrder(@Param('orderId') orderId: string) {
     await this.ordersService.cancel(orderId);
   }
 
   @Get()
-  findOne(@Query() query: OrdersQueryDto, @User() user: UserEntity) {
+  getOrdersById(@Query() query: OrdersQueryDto, @User() user: UserEntity) {
     return this.ordersService.getOrdersByUserId(user, query);
   }
 }

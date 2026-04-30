@@ -11,6 +11,8 @@ import getPaginationMeta from '@/utils/getPaginationMeta';
 import getPaginationParams from '@/utils/getPaginationParams';
 import { plainToInstance } from 'class-transformer';
 import { ProductCartOutDto } from '@/modules/cart/dto/cart.out.dto';
+import { MergedCartDataType } from '@/common/types';
+import { UserEntity } from '../users/entities/user.entity';
 
 type WhereCartType = {
   cart: {
@@ -77,6 +79,68 @@ export class CartService {
         id: productId,
       },
     };
+  }
+
+  async mergeTempCart(userId: string, cartProducts: AddToCartDto[]) {
+    const data: MergedCartDataType = {
+      success: [],
+      failed: [],
+    };
+
+    // TODO: Можно оптимизировать
+    for (let i = 0; i < cartProducts.length; i++) {
+      const { productId, count } = cartProducts[i];
+
+      const existProduct = await this.productsRepository.findOne({
+        where: {
+          id: productId,
+        },
+        relations: {
+          productConsumables: {
+            consumable: true,
+          },
+        },
+      });
+
+      if (!existProduct) {
+        data.failed.push(existProduct);
+        continue;
+      }
+
+      const where = await this.createWhereCondition({ userId, productId });
+
+      const existProductInCart = await this.cartProductsRepository.findOne({
+        where,
+      });
+
+      if (existProductInCart) {
+        await this.cartProductsRepository.update(where, {
+          count,
+        });
+
+        data.success.push(existProduct);
+        continue;
+      }
+
+      let userCart = await this.cartRepository.findOne({
+        where: { ...where.cart },
+      });
+
+      if (!userCart) {
+        userCart = this.cartRepository.create({ ...where.cart });
+        await this.cartRepository.save(userCart);
+      }
+
+      const cartProductEntity = this.cartProductsRepository.create({
+        ...where,
+        cart: userCart,
+        count,
+      });
+
+      await this.cartProductsRepository.save(cartProductEntity);
+    }
+
+    return data;
   }
 
   async addToCart(userId: string, { count, productId }: AddToCartDto) {
@@ -166,6 +230,23 @@ export class CartService {
       }, 0),
       meta,
     };
+  }
+
+  async checkProductInCart(userId: string, productId: string) {
+    const cartProduct = await this.cartProductsRepository.findOne({
+      where: {
+        product: {
+          id: productId,
+        },
+        cart: {
+          user: {
+            id: userId,
+          },
+        },
+      },
+    });
+
+    return plainToInstance(ProductCartOutDto, cartProduct);
   }
 
   async update(userId: string, { count, productId }: UpdateCartDto) {

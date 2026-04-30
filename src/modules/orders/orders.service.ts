@@ -13,7 +13,7 @@ import getPaginationMeta from '@/utils/getPaginationMeta';
 import { ProductConsumableEntity } from '@/modules/products/entities/productConsumables.entity';
 import { ConsumableEntity } from '@/modules/consumables/entities/consumable.entity';
 import { plainToInstance } from 'class-transformer';
-import { OrderOutDto, OrderProductOutDto } from '@/modules/orders/dto/order.out.dto';
+import { OrderOutDto } from '@/modules/orders/dto/order.out.dto';
 
 type ConsumablesCountDataType = Record<
   string,
@@ -281,6 +281,7 @@ export class OrdersService {
   }
 
   async cancel(orderId: string) {
+    console.log('ORDER ID', orderId);
     const existOrder = await this.findByIdOrError(orderId);
 
     try {
