@@ -3,6 +3,11 @@ import { IsEnum, IsOptional, IsUUID } from 'class-validator';
 import { OrderStatus } from '@/modules/orders/entities/order.entity';
 import { Type } from 'class-transformer';
 
+export class UpdateOrderStatusDto {
+  @IsEnum(OrderStatus)
+  status: OrderStatus;
+}
+
 export class OrdersQueryDto extends PaginationQueryDto {
   @IsEnum(OrderStatus)
   @IsOptional()

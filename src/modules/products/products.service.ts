@@ -17,7 +17,7 @@ import { ConsumableEntity } from '@/modules/consumables/entities/consumable.enti
 import { ConsumablesException } from '@/exceptions/consumables.exception';
 import { ProductConsumableEntity } from '@/modules/products/entities/productConsumables.entity';
 import { UserEntity } from '@/modules/users/entities/user.entity';
-import { Roles } from '../users/types';
+import { Roles } from '@/modules/users/types';
 
 type AddProductConsumableType = {
   productId: string;
@@ -28,10 +28,11 @@ type RemoveProductConsumableType = Pick<AddProductConsumableType, 'productId'> &
   consumableIds: string[];
 };
 
-type GetProductsQueryOptions = {
-  where?: FindOptionsWhere<ProductEntity> | FindOptionsWhere<ProductEntity>[];
-  order?: FindOptionsOrder<ProductEntity>;
-};
+//! Зачем?
+// type GetProductsQueryOptions = {
+//   where?: FindOptionsWhere<ProductEntity> | FindOptionsWhere<ProductEntity>[];
+//   order?: FindOptionsOrder<ProductEntity>;
+// };
 
 @Injectable()
 export class ProductsService {
@@ -160,14 +161,16 @@ export class ProductsService {
   async findAll({ ids, ...query }: ProductQueryDto, user: UserEntity) {
     const { skip, limit, page } = getPaginationParams(query);
 
-    let options: { ids: string[]; order?: FindOptionsOrder<ProductEntity> };
+    const options: { ids: string[]; order?: FindOptionsOrder<ProductEntity> } = {
+      ids: [],
+    };
 
     if (ids) options.ids = ids;
 
     // TODO: Рефакторинг
     const [entities, total] = await this[
       user?.role === Roles.ADMIN ? 'getAdminQuery' : 'getUserQuery'
-    ](skip, limit, options);
+    ](skip, limit, { ids });
 
     const meta = getPaginationMeta({ total, limit, page });
 

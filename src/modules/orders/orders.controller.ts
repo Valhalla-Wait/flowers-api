@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, Patch } from '@nestjs/common';
 import { OrdersService } from '@/modules/orders/orders.service';
 import { User } from '@/decorators/user.decorator';
 import { UserEntity } from '@/modules/users/entities/user.entity';
-import { OrdersQueryDto } from '@/modules/orders/dto/order.in.dto';
+import { OrdersQueryDto, UpdateOrderStatusDto } from '@/modules/orders/dto/order.in.dto';
 import { plainToInstance } from 'class-transformer';
 import { OrderOutDto } from '@/modules/orders/dto/order.out.dto';
+import { ParamUUID } from '@/decorators/paramUuid.decorator';
 
 @Controller('orders')
 export class OrdersController {
@@ -16,24 +17,13 @@ export class OrdersController {
     return plainToInstance(OrderOutDto, entity);
   }
 
-  @Post('accept/:orderId')
-  async acceptOrder(@Param('orderId') orderId: string) {
-    await this.ordersService.accept(orderId);
-  }
-
-  @Post('complete/:orderId')
-  async completeOrder(@Param('orderId') orderId: string) {
-    await this.ordersService.complete(orderId);
-  }
-
-  @Post('delivery/:orderId')
-  async setDeliveryOrder(@Param('orderId') orderId: string) {
-    await this.ordersService.delivery(orderId);
-  }
-
-  @Delete('cancel/:orderId')
-  async cancelOrder(@Param('orderId') orderId: string) {
-    await this.ordersService.cancel(orderId);
+  @Patch(':orderId')
+  async updateOrderStatus(
+    @ParamUUID('orderId') orderId: string,
+    @Body() { status }: UpdateOrderStatusDto,
+  ) {
+    const entity = await this.ordersService.updateStatus(orderId, status);
+    return plainToInstance(OrderOutDto, entity);
   }
 
   @Get()

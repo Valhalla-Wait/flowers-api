@@ -16,7 +16,7 @@ export class ProductCartOutDto extends DatesOutDto {
 
   @Expose()
   @ApiProperty()
-  @Transform(({ obj }) => obj.count * obj.product.price)
+  @Transform(({ obj }) => obj.count * obj.price)
   productTotalPrice: number;
 
   @Expose()

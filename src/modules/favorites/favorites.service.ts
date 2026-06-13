@@ -15,7 +15,6 @@ export class FavoritesService {
   constructor(
     @InjectRepository(FavoriteEntity)
     private readonly favoritesRepository: Repository<FavoriteEntity>,
-
     private readonly productsService: ProductsService,
   ) {}
 

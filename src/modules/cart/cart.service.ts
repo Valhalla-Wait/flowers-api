@@ -12,7 +12,6 @@ import getPaginationParams from '@/utils/getPaginationParams';
 import { plainToInstance } from 'class-transformer';
 import { ProductCartOutDto } from '@/modules/cart/dto/cart.out.dto';
 import { MergedCartDataType } from '@/common/types';
-import { UserEntity } from '../users/entities/user.entity';
 
 type WhereCartType = {
   cart: {
@@ -115,7 +114,7 @@ export class CartService {
 
       if (existProductInCart) {
         await this.cartProductsRepository.update(where, {
-          count,
+          count: existProductInCart.count + count,
         });
 
         data.success.push(existProduct);
