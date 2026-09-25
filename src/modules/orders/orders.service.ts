@@ -421,7 +421,7 @@ export class OrdersService {
     }
   }
 
-  async getOrdersByUserId(user: UserEntity, { userId, status, ...pagination }: OrdersQueryDto) {
+  async getOrders(user: UserEntity, { userId, status, sort, ...pagination }: OrdersQueryDto) {
     const { skip, limit, page } = getPaginationParams(pagination);
 
     const isAdmin = user.role === Roles.ADMIN;
@@ -454,6 +454,9 @@ export class OrdersService {
             },
           },
         },
+      },
+      order: {
+        createdAt: sort ?? 'desc',
       },
       skip,
       take: limit,

@@ -27,7 +27,7 @@ export class OrdersController {
   }
 
   @Get()
-  getOrdersById(@Query() query: OrdersQueryDto, @User() user: UserEntity) {
-    return this.ordersService.getOrdersByUserId(user, query);
+  getOrders(@Query() query: OrdersQueryDto, @User() user: UserEntity) {
+    return this.ordersService.getOrders(user, query);
   }
 }

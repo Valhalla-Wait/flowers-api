@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsOptional } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class PaginationQueryDto {
@@ -12,4 +12,11 @@ export class PaginationQueryDto {
   @IsOptional()
   @ApiPropertyOptional()
   readonly limit?: number;
+}
+
+export class SortQueryDto {
+  @IsOptional()
+  @IsString()
+  @ApiPropertyOptional()
+  readonly sort?: 'asc' | 'desc';
 }
