@@ -56,7 +56,13 @@ export class UpdateProductDto extends PartialType(CreateProductDto) {
   isAvailable?: boolean;
 }
 
+// TODO: Сделать отдельное dto под админа
 export class ProductQueryDto extends PaginationQueryDto {
+  @IsArray()
+  @Type(() => IsUUID(4))
+  @IsOptional()
+  ids?: string[];
+
   @IsArray()
   @Type(() => IsUUID(4))
   @IsOptional()

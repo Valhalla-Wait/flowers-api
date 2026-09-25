@@ -1,37 +1,33 @@
-import { Controller, Get, Post, Param, Delete, Query } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, Patch } from '@nestjs/common';
 import { OrdersService } from '@/modules/orders/orders.service';
 import { User } from '@/decorators/user.decorator';
 import { UserEntity } from '@/modules/users/entities/user.entity';
-import { OrdersQueryDto } from '@/modules/orders/dto/order.in.dto';
+import { OrdersQueryDto, UpdateOrderStatusDto } from '@/modules/orders/dto/order.in.dto';
+import { plainToInstance } from 'class-transformer';
+import { OrderOutDto } from '@/modules/orders/dto/order.out.dto';
+import { ParamUUID } from '@/decorators/paramUuid.decorator';
 
 @Controller('orders')
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
-  createOrder(@User() user: UserEntity) {
-    return this.ordersService.create(user.id);
+  async createOrder(@User() user: UserEntity) {
+    const entity = await this.ordersService.create(user.id);
+    return plainToInstance(OrderOutDto, entity);
   }
 
-  @Post(':orderId')
-  async acceptOrder(@Param('orderId') orderId: string) {
-    await this.ordersService.create(orderId);
-  }
-  @Post(':orderId')
-  async completeOrder(@Param('orderId') orderId: string) {
-    await this.ordersService.complete(orderId);
-  }
-  @Post(':orderId')
-  async setDeliveryOrder(@Param('orderId') orderId: string) {
-    await this.ordersService.delivery(orderId);
-  }
-  @Delete(':orderId')
-  async cancelOrder(@Param('orderId') orderId: string) {
-    await this.ordersService.cancel(orderId);
+  @Patch(':orderId')
+  async updateOrderStatus(
+    @ParamUUID('orderId') orderId: string,
+    @Body() { status }: UpdateOrderStatusDto,
+  ) {
+    const entity = await this.ordersService.updateStatus(orderId, status);
+    return plainToInstance(OrderOutDto, entity);
   }
 
   @Get()
-  findOne(@Query() query: OrdersQueryDto, @User() user: UserEntity) {
-    return this.ordersService.getOrdersByUserId(user, query);
+  getOrders(@Query() query: OrdersQueryDto, @User() user: UserEntity) {
+    return this.ordersService.getOrders(user, query);
   }
 }

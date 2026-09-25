@@ -35,5 +35,5 @@ export class OrderOutDto extends IdWithDatesOutDto {
   @Expose()
   @ApiProperty()
   @Transform(({ obj }) => obj.user.phone)
-  phone: number;
+  phone: string;
 }

@@ -1,3 +1,4 @@
+import { ProductEntity } from '@/modules/products/entities/product.entity';
 import { Type } from '@nestjs/common';
 import { ClassTransformOptions } from 'class-transformer';
 
@@ -39,3 +40,8 @@ export type ApiResponseDocumentation = {
 
 //TODO: Сделать через declare
 export type CustomClassTransformOptions = ClassTransformOptions & { customPrice?: number };
+
+export type MergedCartDataType = {
+  success: ProductEntity[];
+  failed: ProductEntity[];
+};

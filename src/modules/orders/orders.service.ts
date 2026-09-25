@@ -13,7 +13,7 @@ import getPaginationMeta from '@/utils/getPaginationMeta';
 import { ProductConsumableEntity } from '@/modules/products/entities/productConsumables.entity';
 import { ConsumableEntity } from '@/modules/consumables/entities/consumable.entity';
 import { plainToInstance } from 'class-transformer';
-import { OrderOutDto, OrderProductOutDto } from '@/modules/orders/dto/order.out.dto';
+import { OrderOutDto } from '@/modules/orders/dto/order.out.dto';
 
 type ConsumablesCountDataType = Record<
   string,
@@ -43,7 +43,14 @@ export class OrdersService {
       where: {
         id,
       },
-      relations: {},
+      relations: {
+        user: true,
+        orderProducts: {
+          product: {
+            productConsumables: true,
+          },
+        },
+      },
     });
 
     if (!found) {
@@ -194,6 +201,7 @@ export class OrdersService {
         },
         relations: {
           orderProducts: true,
+          user: true,
         },
       });
     });
@@ -238,15 +246,42 @@ export class OrdersService {
     }
   }
 
-  async accept(orderId: string) {
-    await this.findByIdOrError(orderId);
+  // TODO: Рефакторинг, уменьшить кол-во походов в БД и join
+  async updateStatus(orderId: string, status: OrderStatus) {
+    const order = await this.findByIdOrError(orderId);
+
+    switch (status) {
+      case OrderStatus.IN_WORK:
+        await this.accept(order);
+        break;
+      case OrderStatus.DELIVERY:
+        await this.delivery(order);
+        break;
+      case OrderStatus.CANCELED:
+        await this.cancel(order);
+        break;
+      case OrderStatus.COMPLETED:
+        await this.complete(order);
+        break;
+      default:
+        throw this.Exception.IncorrectUpdatedOrderStatus();
+    }
+
+    order.status = status;
+
+    return order;
+  }
+
+  async accept(order: OrderEntity) {
+    // NOTE: Временно отключена проверка, тк она происходит выше при вызове метода
+    // await this.findByIdOrError(orderId);
 
     try {
       await this.dataSource.transaction(async (manager) => {
         await manager.update(
           OrderEntity,
           {
-            id: orderId,
+            id: order.id,
           },
           {
             status: OrderStatus.IN_WORK,
@@ -256,7 +291,7 @@ export class OrdersService {
         const orderProducts = await manager.find(OrderProductEntity, {
           where: {
             order: {
-              id: orderId,
+              id: order.id,
             },
           },
           relations: {
@@ -280,15 +315,16 @@ export class OrdersService {
     }
   }
 
-  async cancel(orderId: string) {
-    const existOrder = await this.findByIdOrError(orderId);
+  async cancel(order: OrderEntity) {
+    // NOTE: Временно отключена проверка, тк она происходит выше при вызове метода
+    // const existOrder = await this.findByIdOrError(orderId);
 
     try {
       await this.dataSource.transaction(async (manager) => {
         await manager.update(
           OrderEntity,
           {
-            id: orderId,
+            id: order.id,
           },
           {
             status: OrderStatus.CANCELED,
@@ -297,11 +333,11 @@ export class OrdersService {
 
         // TODO: Если нехватает расходников на товары, то вывести на фронте уведомление админу при принятии заказа
         // NOTE: Оставлена возможность принудительного принятия заказа даже при отсутствии расходников
-        if ([OrderStatus.IN_WORK, OrderStatus.DELIVERY].includes(existOrder.status)) {
+        if ([OrderStatus.IN_WORK, OrderStatus.DELIVERY].includes(order.status)) {
           const orderProducts = await manager.find(OrderProductEntity, {
             where: {
               order: {
-                id: orderId,
+                id: order.id,
               },
             },
             relations: {
@@ -323,13 +359,14 @@ export class OrdersService {
     }
   }
 
-  async complete(orderId: string) {
-    await this.findByIdOrError(orderId);
+  async complete(order: OrderEntity) {
+    // NOTE: Временно отключена проверка, тк она происходит выше при вызове метода
+    // await this.findByIdOrError(orderId);
 
     try {
       await this.ordersRepository.update(
         {
-          id: orderId,
+          id: order.id,
         },
         {
           status: OrderStatus.COMPLETED,
@@ -342,26 +379,27 @@ export class OrdersService {
     }
   }
 
-  async delivery(orderId: string) {
-    const existOrder = await this.findByIdOrError(orderId);
+  async delivery(order: OrderEntity) {
+    // NOTE: Временно отключена проверка, тк она происходит выше при вызове метода
+    // const existOrder = await this.findByIdOrError(orderId);
 
     try {
       await this.dataSource.transaction(async (manager) => {
         await manager.update(
           OrderEntity,
           {
-            id: orderId,
+            id: order.id,
           },
           {
             status: OrderStatus.DELIVERY,
           },
         );
 
-        if ([OrderStatus.IN_PROCESS, OrderStatus.CANCELED].includes(existOrder.status)) {
+        if ([OrderStatus.IN_PROCESS, OrderStatus.CANCELED].includes(order.status)) {
           const orderProducts = await manager.find(OrderProductEntity, {
             where: {
               order: {
-                id: orderId,
+                id: order.id,
               },
             },
             relations: {
@@ -383,7 +421,7 @@ export class OrdersService {
     }
   }
 
-  async getOrdersByUserId(user: UserEntity, { userId, status, ...pagination }: OrdersQueryDto) {
+  async getOrders(user: UserEntity, { userId, status, sort, ...pagination }: OrdersQueryDto) {
     const { skip, limit, page } = getPaginationParams(pagination);
 
     const isAdmin = user.role === Roles.ADMIN;
@@ -417,6 +455,9 @@ export class OrdersService {
           },
         },
       },
+      order: {
+        createdAt: sort ?? 'desc',
+      },
       skip,
       take: limit,
     });
@@ -432,10 +473,6 @@ export class OrdersService {
   findOne(id: number) {
     return `This action returns a #${id} order`;
   }
-
-  // update(id: number, updateOrderDto: UpdateOrderDto) {
-  //   return `This action updates a #${id} order`;
-  // }
 
   remove(id: number) {
     return `This action removes a #${id} order`;

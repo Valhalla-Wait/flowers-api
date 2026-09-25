@@ -10,5 +10,6 @@ import { ProductConsumableEntity } from '@/modules/products/entities/productCons
   imports: [TypeOrmModule.forFeature([ProductEntity, ConsumableEntity, ProductConsumableEntity])],
   controllers: [ProductsController],
   providers: [ProductsService],
+  exports: [ProductsService],
 })
 export class ProductsModule {}

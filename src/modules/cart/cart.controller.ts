@@ -19,6 +19,11 @@ export class CartController {
     return this.cartService.getCartByUserId(user.id, query);
   }
 
+  @Get('/check-product')
+  checkProductInCart(@User() user: UserEntity, @Param('productId') productId: string) {
+    return this.cartService.checkProductInCart(user.id, productId);
+  }
+
   @Patch()
   async update(@User() user: UserEntity, @Body() updateCartDto: UpdateCartDto) {
     await this.cartService.update(user.id, updateCartDto);

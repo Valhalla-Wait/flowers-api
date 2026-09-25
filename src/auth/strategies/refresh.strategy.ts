@@ -1,5 +1,5 @@
 import { Strategy } from 'passport-jwt';
-import { Request, Response } from 'express';
+import { Request } from 'express';
 import { Injectable } from '@nestjs/common';
 import { AbstractStrategy, PassportStrategy } from '@nestjs/passport';
 
@@ -23,26 +23,18 @@ export class RefreshJwtStrategy
     private readonly authService: AuthService,
   ) {
     super({
+      passReqToCallback: true,
       secretOrKey: envConfig.jwt.secret,
-      jwtFromRequest: (context: Request) => {
-        this.response = context.res;
-        return getToken(context, TokenType.REFRESH);
-      },
+      jwtFromRequest: (context: Request) => getToken(context, TokenType.REFRESH),
     });
   }
 
-  //! Это баг наверно, нельзя общее свойство использовать
-  // TODO: нужно ли в базе хранить last_access_token_id?
-  private response?: Response;
-
-  public async validate({ id }: UserTokenPayload) {
+  public async validate(req: Request, { id }: UserTokenPayload) {
     try {
       const user = await this.usersService.findOneByOrError({ id });
 
-      if (this.response) {
-        const accessToken = await this.authService.generateAndUpdateToken(user, TokenType.ACCESS);
-        setTokenCookies(this.response, accessToken, TokenType.ACCESS);
-      }
+      const accessToken = await this.authService.generateAndUpdateToken(user, TokenType.ACCESS);
+      setTokenCookies(req.res, accessToken, TokenType.ACCESS);
 
       return user;
     } catch (err) {

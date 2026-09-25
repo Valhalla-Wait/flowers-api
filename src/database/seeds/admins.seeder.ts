@@ -8,7 +8,7 @@ const admins = [
   {
     firstName: 'admin',
     lastName: 'admin',
-    phone: 'none',
+    phone: '89108939318',
     role: Roles.ADMIN,
     password: '123456',
   },

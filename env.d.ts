@@ -9,6 +9,12 @@ declare namespace NodeJS {
     POSTGRES_USER: string;
     POSTGRES_PASSWORD: string;
 
+    S3_ENDPOINT: string,
+    S3_REGION: string,
+    S3_BUCKET: string,
+    S3_ACCESS_KEY: string,
+    S3_SECRET_KEY: string,
+
     CODE: string;
 
     JWT_SECRET: string;

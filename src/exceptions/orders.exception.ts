@@ -64,4 +64,8 @@ export class OrdersException {
       HttpStatus.CONFLICT,
     );
   }
+
+  static IncorrectUpdatedOrderStatus() {
+    return new HttpException('Выбран неверный статус заказ', HttpStatus.BAD_REQUEST);
+  }
 }

@@ -3,6 +3,7 @@ import { Column, Entity, OneToMany } from 'typeorm';
 import { ProductConsumableEntity } from '@/modules/products/entities/productConsumables.entity';
 import { CartProductEntity } from '@/modules/cart/entities/cartProduct.entity';
 import { OrderProductEntity } from '@/modules/orders/entities/orderProduct.entity';
+import { FavoriteEntity } from '@/modules/favorites/entities/favorite.entity';
 
 @Entity('products')
 export class ProductEntity extends BaseEntityWithDatesAndIdColumns {
@@ -28,4 +29,7 @@ export class ProductEntity extends BaseEntityWithDatesAndIdColumns {
 
   @OneToMany(() => ProductConsumableEntity, (productConsumables) => productConsumables.product)
   productConsumables: ProductConsumableEntity[];
+
+  @OneToMany(() => FavoriteEntity, (favorite) => favorite.product)
+  favorites: FavoriteEntity[];
 }

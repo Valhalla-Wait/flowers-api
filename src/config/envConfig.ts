@@ -24,6 +24,16 @@ class EnvConfig {
       port: Number(process.env.POSTGRES_PORT) || 5432,
     };
   }
+
+  get s3() {
+    return {
+      endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
+      region: process.env.S3_REGION || 'us-east-1',
+      bucket: process.env.S3_BUCKET || 'default',
+      accessKey: process.env.S3_ACCESS_KEY || 'minioadmin',
+      secretKey: process.env.S3_SECRET_KEY || 'minioadmin',
+    };
+  }
 }
 
 export default new EnvConfig();
