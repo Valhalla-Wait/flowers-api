@@ -40,6 +40,8 @@ export class UserEntity extends BaseEntityWithDatesAndIdColumns {
   userCarts: CartEntity[];
 
   @OneToMany(() => OrderEntity, (cart) => cart.user)
+  // NOTE: Связь заказа с юзером сейчас опциональна из-за упрощённого флоу заказа (без регистрации).
+  // Позже вернуть полноценный флоу: у заказа снова будет обязательный юзер.
   userOrders: OrderEntity[];
 
   @OneToMany(() => FavoriteEntity, (favorite) => favorite.user)
