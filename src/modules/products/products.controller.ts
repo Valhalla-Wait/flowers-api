@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Patch, Delete, Query } from '@nestjs/common';
 import { ProductsService } from '@/modules/products/products.service';
 import {
+  AddProductTagsDto,
   CreateProductDto,
   ProductQueryDto,
   UpdateProductDto,
@@ -48,6 +49,28 @@ export class ProductsController {
   @Delete(':id')
   async remove(@ParamUUID('id') id: string) {
     await this.productsService.remove(id);
+    return {
+      message: 'Success',
+    };
+  }
+
+  @Post(':id/tags')
+  async addTags(@ParamUUID('id') id: string, @Body() addProductTagsDto: AddProductTagsDto) {
+    await this.productsService.addTags({
+      productId: id,
+      tagIds: addProductTagsDto.tagIds,
+    });
+    return {
+      message: 'Success',
+    };
+  }
+
+  @Delete(':id/tags/:tagId')
+  async removeTag(@ParamUUID('id') id: string, @ParamUUID('tagId') tagId: string) {
+    await this.productsService.removeTags({
+      productId: id,
+      tagIds: [tagId],
+    });
     return {
       message: 'Success',
     };
