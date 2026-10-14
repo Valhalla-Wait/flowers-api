@@ -5,6 +5,10 @@ export class OrdersException {
     return new HttpException('Указанные товары не найдены в корзине', HttpStatus.NOT_FOUND);
   }
 
+  static ProductNotFound() {
+    return new HttpException('Указанный товар не найден', HttpStatus.NOT_FOUND);
+  }
+
   static OrderNotFound() {
     return new HttpException('Заказ не найден', HttpStatus.NOT_FOUND);
   }

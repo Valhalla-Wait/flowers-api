@@ -118,7 +118,7 @@ export class ProductsService {
       }),
     );
 
-    if (options?.ids) {
+    if (options?.ids?.length) {
       query.andWhere('product.id IN (:...ids)', {
         ids: options.ids,
       });
@@ -137,14 +137,14 @@ export class ProductsService {
   ) {
     const where: FindOptionsWhere<ProductEntity> = {};
 
-    if (options) {
+    if (options.ids.length) {
       where.id = In(options.ids);
     }
 
     const data = await this.productsRepository.findAndCount({
       where,
       order: options?.order ?? {
-        createdAt: 'ASC',
+        createdAt: 'desc',
       },
       relations: {
         productConsumables: {
@@ -165,12 +165,12 @@ export class ProductsService {
       ids: [],
     };
 
-    if (ids) options.ids = ids;
+    if (ids?.length) options.ids = ids;
 
     // TODO: Рефакторинг
     const [entities, total] = await this[
       user?.role === Roles.ADMIN ? 'getAdminQuery' : 'getUserQuery'
-    ](skip, limit, { ids });
+    ](skip, limit, options);
 
     const meta = getPaginationMeta({ total, limit, page });
 

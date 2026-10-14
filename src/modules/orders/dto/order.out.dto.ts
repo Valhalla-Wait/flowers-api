@@ -34,6 +34,7 @@ export class OrderOutDto extends IdWithDatesOutDto {
 
   @Expose()
   @ApiProperty()
-  @Transform(({ obj }) => obj.user.phone)
+  // NOTE: В полном флоу phone приходит из user; в упрощённом (order без user) — из колонки orders.phone.
+  @Transform(({ obj }) => obj.user?.phone ?? obj.phone)
   phone: string;
 }

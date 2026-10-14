@@ -5,8 +5,9 @@ import { OrderEntity, OrderStatus } from '@/modules/orders/entities/order.entity
 import { OrdersException } from '@/exceptions/orders.exception';
 import { CartProductEntity } from '@/modules/cart/entities/cartProduct.entity';
 import { OrderProductEntity } from '@/modules/orders/entities/orderProduct.entity';
-import { OrdersQueryDto } from '@/modules/orders/dto/order.in.dto';
+import { OrdersQueryDto, SimpleOrderProductDto } from '@/modules/orders/dto/order.in.dto';
 import { UserEntity } from '@/modules/users/entities/user.entity';
+import { ProductEntity } from '@/modules/products/entities/product.entity';
 import { Roles } from '@/modules/users/types';
 import getPaginationParams from '@/utils/getPaginationParams';
 import getPaginationMeta from '@/utils/getPaginationMeta';
@@ -32,6 +33,8 @@ export class OrdersService {
     private readonly ordersProductsRepository: Repository<OrderProductEntity>,
     @InjectRepository(CartProductEntity)
     private readonly cartProductsRepository: Repository<CartProductEntity>,
+    @InjectRepository(ProductEntity)
+    private readonly productsRepository: Repository<ProductEntity>,
 
     private dataSource: DataSource,
   ) {}
@@ -120,90 +123,96 @@ export class OrdersService {
     }
   }
 
-  private async createOrder(userId: string, cartProducts: CartProductEntity[]) {
-    return this.dataSource.transaction(async (manager) => {
-      // ПРОВЕРКА НАЛИЧИЯ НЕОБХОДИМЫХ РАСХОДНИКОВ ДЛЯ ТОВАРОВ
-      const productsConsumables = await manager.find(ProductConsumableEntity, {
-        where: {
-          product: {
-            id: In(cartProducts.map(({ product }) => product.id)),
-          },
+  // Общая логика создания заказа (проверка расходников + создание order + order_products),
+  // переиспользуется и в полном флоу (из корзины), и в упрощённом (только phone).
+  private async checkAndCreateOrder(
+    manager: EntityManager,
+    data: {
+      phone?: string | null;
+      userId?: string;
+      items: { product: ProductEntity; count: number }[];
+    },
+  ) {
+    const { phone, userId, items } = data;
+
+    // ПРОВЕРКА НАЛИЧИЯ НЕОБХОДИМЫХ РАСХОДНИКОВ ДЛЯ ТОВАРОВ
+    const productsConsumables = await manager.find(ProductConsumableEntity, {
+      where: {
+        product: {
+          id: In(items.map(({ product }) => product.id)),
         },
-        relations: {
-          product: true,
-          consumable: true,
-        },
-      });
+      },
+      relations: {
+        product: true,
+        consumable: true,
+      },
+    });
 
-      //TODO: Добавить уровень изоляции
-      //TODO: Вынести логику с проверкой в сервис продуктов
-      const productsWithNotEnoughConsumables = productsConsumables.filter(
-        ({ consumable, requiredCount }) => consumable.count < requiredCount,
-      );
+    //TODO: Добавить уровень изоляции
+    //TODO: Вынести логику с проверкой в сервис продуктов
+    const productsWithNotEnoughConsumables = productsConsumables.filter(
+      ({ consumable, requiredCount }) => consumable.count < requiredCount,
+    );
 
-      // TODO: Реализовать логику перекрывающих друг друга по компонентам продукты.
-      // !NOTE:
-      // !Пока оставить предупреждение в админку, что в заказе не на все продукты хватит расходников
-      // !Решить при телефонном разговоре какие исключить или заменить на другие товары
+    // TODO: Реализовать логику перекрывающих друг друга по компонентам продукты.
+    // !NOTE:
+    // !Пока оставить предупреждение в админку, что в заказе не на все продукты хватит расходников
+    // !Решить при телефонном разговоре какие исключить или заменить на другие товары
 
-      // Продукты могут друг друга исключать если имеют общие расходники
-      // надо вывести предупреждение на фронте на этапе добавления в корзину с выбором товара
-      // const productsWithNotEnoughCommonConsumables: ProductConsumableEntity[][] = [];
+    // Продукты могут друг друга исключать если имеют общие расходники
+    // надо вывести предупреждение на фронте на этапе добавления в корзину с выбором товара
+    // const productsWithNotEnoughCommonConsumables: ProductConsumableEntity[][] = [];
 
-      // productsConsumables.forEach((el) => {
-      //   let consumableCount = el.consumable.count;
+    // productsConsumables.forEach((el) => {
+    //   let consumableCount = el.consumable.count;
 
-      //   const commonProductsConsumables = productsConsumables.filter(
-      //     (productConsumable) => productConsumable.consumable.id === el.consumable.id,
-      //   );
+    //   const commonProductsConsumables = productsConsumables.filter(
+    //     (productConsumable) => productConsumable.consumable.id === el.consumable.id,
+    //   );
 
-      //   commonProductsConsumables.forEach(
-      //     (common) => (consumableCount = consumableCount - common.requiredCount),
-      //   );
+    //   commonProductsConsumables.forEach(
+    //     (common) => (consumableCount = consumableCount - common.requiredCount),
+    //   );
 
-      //   if (consumableCount < 0) {
-      //     productsWithNotEnoughCommonConsumables.push(commonProductsConsumables);
-      //   }
-      // });
+    //   if (consumableCount < 0) {
+    //     productsWithNotEnoughCommonConsumables.push(commonProductsConsumables);
+    //   }
+    // });
 
-      if (productsWithNotEnoughConsumables.length) {
-        // TODO: Протестировать
-        throw this.Exception.NotEnoughConsumables([
-          ...new Set(productsWithNotEnoughConsumables.map((el) => el.product.title)),
-        ]);
-      }
+    if (productsWithNotEnoughConsumables.length) {
+      // TODO: Протестировать
+      throw this.Exception.NotEnoughConsumables([
+        ...new Set(productsWithNotEnoughConsumables.map((el) => el.product.title)),
+      ]);
+    }
 
-      // СОЗДАНИЕ ЗАКАЗА
-      const orderEntity = manager.create(OrderEntity, {
-        user: {
-          id: userId,
-        },
-      });
-      await manager.save(orderEntity);
+    // СОЗДАНИЕ ЗАКАЗА
+    const orderEntity = manager.create(OrderEntity, {
+      user: userId ? { id: userId } : undefined,
+      // NOTE: Упрощённый флоу заказа (без регистрации) — заказ создаётся по phone без юзера/корзины.
+      phone: phone ?? null,
+    });
+    await manager.save(orderEntity);
 
-      // ДОБАВЛЕНИЕ ТОВАРОВ В ЗАКАЗ
-      const orderProductEntities = manager.create(
-        OrderProductEntity,
-        cartProducts.map(({ count, product }) => ({
-          product,
-          order: orderEntity,
-          count,
-        })),
-      );
-      await manager.save(orderProductEntities);
+    // ДОБАВЛЕНИЕ ТОВАРОВ В ЗАКАЗ
+    const orderProductEntities = manager.create(
+      OrderProductEntity,
+      items.map(({ product, count }) => ({
+        product,
+        order: orderEntity,
+        count,
+      })),
+    );
+    await manager.save(orderProductEntities);
 
-      // УДАЛЕНИЕ ТОВАРОВ ИЗ КОРЗИНЫ
-      await manager.delete(CartProductEntity, cartProducts);
-
-      return manager.findOne(OrderEntity, {
-        where: {
-          id: orderEntity.id,
-        },
-        relations: {
-          orderProducts: true,
-          user: true,
-        },
-      });
+    return manager.findOne(OrderEntity, {
+      where: {
+        id: orderEntity.id,
+      },
+      relations: {
+        orderProducts: true,
+        user: true,
+      },
     });
   }
 
@@ -230,7 +239,74 @@ export class OrdersService {
     }
 
     try {
-      const createdOrder = await this.createOrder(userId, productsInCart);
+      const createdOrder = await this.dataSource.transaction(async (manager) => {
+        const order = await this.checkAndCreateOrder(manager, {
+          userId,
+          items: productsInCart.map(({ product, count }) => ({ product, count })),
+        });
+
+        // УДАЛЕНИЕ ТОВАРОВ ИЗ КОРЗИНЫ
+        await manager.delete(CartProductEntity, productsInCart);
+
+        return order;
+      });
+
+      return {
+        ...createdOrder,
+        totalPrice: createdOrder.orderProducts.reduce((acc, { count, price }) => {
+          return acc + count * price;
+        }, 0),
+      };
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+
+      Logger.error(error);
+      throw this.Exception.CreateOrderError();
+    }
+  }
+
+  // Упрощённый флоу создания заказа — без регистрации юзера и корзины, только phone + товары.
+  // NOTE: Временная реализация, позже вернуть полноценный флоу.
+  async createSimpleOrder(phone: string, items: SimpleOrderProductDto[]) {
+    // Сливаем дубликаты productId в общий count (в корзине полного флоу их исключает уникальный индекс).
+    const mergedItems = items.reduce<{ productId: string; count: number }[]>(
+      (acc, { productId, count }) => {
+        const existing = acc.find((i) => i.productId === productId);
+
+        if (existing) {
+          existing.count += count;
+        } else {
+          acc.push({ productId, count });
+        }
+
+        return acc;
+      },
+      [],
+    );
+
+    const productIds = [...new Set(mergedItems.map(({ productId }) => productId))];
+
+    const products = await this.productsRepository.find({
+      where: {
+        id: In(productIds),
+      },
+    });
+
+    if (products.length !== productIds.length) {
+      throw this.Exception.ProductNotFound();
+    }
+
+    const productsById = new Map(products.map((p) => [p.id, p]));
+
+    const orderItems = mergedItems.map(({ productId, count }) => ({
+      product: productsById.get(productId)!,
+      count,
+    }));
+
+    try {
+      const createdOrder = await this.dataSource.transaction((manager) =>
+        this.checkAndCreateOrder(manager, { phone, items: orderItems }),
+      );
 
       return {
         ...createdOrder,

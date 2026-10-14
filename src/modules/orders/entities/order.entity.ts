@@ -25,9 +25,14 @@ export class OrderEntity extends BaseEntityWithDatesAndIdColumns {
   @Column({ enum: OrderStatus, default: OrderStatus.IN_PROCESS })
   status: OrderStatus;
 
+  // NOTE: Упрощённый флоу заказа (без регистрации юзера/корзины — только phone).
+  // Позже вернуть полноценный флоу: убрать поле phone и вернуть user_id в NOT NULL.
+  @Column({ type: 'varchar', nullable: true })
+  phone: string | null;
+
   @ManyToOne(() => UserEntity, {
     onDelete: 'CASCADE',
-    nullable: false,
+    nullable: true,
   })
   @JoinColumn([{ name: 'user_id', referencedColumnName: 'id' }])
   public user: UserEntity;
