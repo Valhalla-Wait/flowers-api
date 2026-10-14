@@ -4,6 +4,7 @@ import { ProductConsumableEntity } from '@/modules/products/entities/productCons
 import { CartProductEntity } from '@/modules/cart/entities/cartProduct.entity';
 import { OrderProductEntity } from '@/modules/orders/entities/orderProduct.entity';
 import { FavoriteEntity } from '@/modules/favorites/entities/favorite.entity';
+import { ProductTagEntity } from '@/modules/products/entities/productTag.entity';
 
 @Entity('products')
 export class ProductEntity extends BaseEntityWithDatesAndIdColumns {
@@ -32,4 +33,7 @@ export class ProductEntity extends BaseEntityWithDatesAndIdColumns {
 
   @OneToMany(() => FavoriteEntity, (favorite) => favorite.product)
   favorites: FavoriteEntity[];
+
+  @OneToMany(() => ProductTagEntity, (productTag) => productTag.product)
+  productTags: ProductTagEntity[];
 }

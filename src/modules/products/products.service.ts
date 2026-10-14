@@ -7,7 +7,7 @@ import {
 } from '@/modules/products/dto/product.in.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ProductEntity } from '@/modules/products/entities/product.entity';
-import { Brackets, FindOptionsOrder, FindOptionsWhere, In, Repository } from 'typeorm';
+import { Brackets, In, Repository, SelectQueryBuilder } from 'typeorm';
 import { ProductsException } from '@/exceptions/products.exception';
 import getPaginationParams from '@/utils/getPaginationParams';
 import getPaginationMeta from '@/utils/getPaginationMeta';
@@ -18,6 +18,9 @@ import { ConsumablesException } from '@/exceptions/consumables.exception';
 import { ProductConsumableEntity } from '@/modules/products/entities/productConsumables.entity';
 import { UserEntity } from '@/modules/users/entities/user.entity';
 import { Roles } from '@/modules/users/types';
+import { ProductTagEntity } from '@/modules/products/entities/productTag.entity';
+import { TagEntity } from '@/modules/tags/entities/tag.entity';
+import { TagsException } from '@/exceptions/tags.exception';
 
 type AddProductConsumableType = {
   productId: string;
@@ -28,11 +31,14 @@ type RemoveProductConsumableType = Pick<AddProductConsumableType, 'productId'> &
   consumableIds: string[];
 };
 
-//! Зачем?
-// type GetProductsQueryOptions = {
-//   where?: FindOptionsWhere<ProductEntity> | FindOptionsWhere<ProductEntity>[];
-//   order?: FindOptionsOrder<ProductEntity>;
-// };
+type AddProductTagsType = {
+  productId: string;
+  tagIds: string[];
+};
+
+type RemoveProductTagsType = Pick<AddProductTagsType, 'productId'> & {
+  tagIds: string[];
+};
 
 @Injectable()
 export class ProductsService {
@@ -43,6 +49,10 @@ export class ProductsService {
     private readonly consumablesRepository: Repository<ConsumableEntity>,
     @InjectRepository(ProductConsumableEntity)
     private readonly productsConsumablesRepository: Repository<ProductConsumableEntity>,
+    @InjectRepository(ProductTagEntity)
+    private readonly productsTagsRepository: Repository<ProductTagEntity>,
+    @InjectRepository(TagEntity)
+    private readonly tagsRepository: Repository<TagEntity>,
   ) {}
 
   private Exception = ProductsException;
@@ -53,6 +63,9 @@ export class ProductsService {
       relations: {
         productConsumables: {
           consumable: true,
+        },
+        productTags: {
+          tag: true,
         },
       },
     });
@@ -65,32 +78,38 @@ export class ProductsService {
   }
 
   async create(createProductDto: CreateProductDto) {
-    const productEntity = this.productsRepository.create(createProductDto);
+    const { tagIds, ...productData } = createProductDto;
+
+    const productEntity = this.productsRepository.create(productData);
     await this.productsRepository.save(productEntity);
 
-    return this.productsRepository.findOne({
-      where: {
-        id: productEntity.id,
-      },
-      relations: {
-        productConsumables: {
-          consumable: true,
-        },
-      },
-    });
+    if (Array.isArray(tagIds) && tagIds.length) {
+      await this.addTags({
+        productId: productEntity.id,
+        tagIds,
+      });
+    }
+
+    return this.findOneByIdOrError(productEntity.id);
   }
 
   private async getUserQuery(
     skip: number,
     limit: number,
-    options?: {
+    options: {
       ids: string[];
+      tagIds?: string[];
+      search?: string;
+      sortBy: 'title' | 'createdAt' | 'price';
+      sortOrder: 'asc' | 'desc';
     },
   ) {
     const query = this.productsRepository
       .createQueryBuilder('product')
       .leftJoinAndSelect('product.productConsumables', 'productConsumable')
-      .leftJoinAndSelect('productConsumable.consumable', 'consumable');
+      .leftJoinAndSelect('productConsumable.consumable', 'consumable')
+      .leftJoinAndSelect('product.productTags', 'productTag')
+      .leftJoinAndSelect('productTag.tag', 'tag');
 
     query.where(
       new Brackets((qb) => {
@@ -118,54 +137,106 @@ export class ProductsService {
       }),
     );
 
-    if (options?.ids?.length) {
+    if (options.ids.length) {
       query.andWhere('product.id IN (:...ids)', {
         ids: options.ids,
       });
     }
 
-    return query.skip(skip).take(limit).getManyAndCount();
+    this.applyTagsFilter(query, options.tagIds);
+
+    if (options.search) {
+      query.andWhere('product.title ILIKE :search', {
+        search: `%${options.search}%`,
+      });
+    }
+
+    query
+      .orderBy(`product.${options.sortBy}`, options.sortOrder === 'asc' ? 'ASC' : 'DESC')
+      .skip(skip)
+      .take(limit);
+
+    return query.getManyAndCount();
   }
 
   private async getAdminQuery(
     skip: number,
     limit: number,
-    options?: {
+    options: {
       ids: string[];
-      order?: FindOptionsOrder<ProductEntity>;
+      tagIds?: string[];
+      search?: string;
+      sortBy: 'title' | 'createdAt' | 'price';
+      sortOrder: 'asc' | 'desc';
     },
   ) {
-    const where: FindOptionsWhere<ProductEntity> = {};
+    const query = this.productsRepository
+      .createQueryBuilder('product')
+      .leftJoinAndSelect('product.productConsumables', 'productConsumable')
+      .leftJoinAndSelect('productConsumable.consumable', 'consumable')
+      .leftJoinAndSelect('product.productTags', 'productTag')
+      .leftJoinAndSelect('productTag.tag', 'tag');
 
     if (options.ids.length) {
-      where.id = In(options.ids);
+      query.andWhere('product.id IN (:...ids)', {
+        ids: options.ids,
+      });
     }
 
-    const data = await this.productsRepository.findAndCount({
-      where,
-      order: options?.order ?? {
-        createdAt: 'desc',
-      },
-      relations: {
-        productConsumables: {
-          consumable: true,
-        },
-      },
-      skip,
-      take: limit,
-    });
+    this.applyTagsFilter(query, options.tagIds);
 
-    return data;
+    if (options.search) {
+      query.andWhere('product.title ILIKE :search', {
+        search: `%${options.search}%`,
+      });
+    }
+
+    query
+      .orderBy(`product.${options.sortBy}`, options.sortOrder === 'asc' ? 'ASC' : 'DESC')
+      .skip(skip)
+      .take(limit);
+
+    return query.getManyAndCount();
   }
 
-  async findAll({ ids, ...query }: ProductQueryDto, user: UserEntity) {
+  private applyTagsFilter(query: SelectQueryBuilder<ProductEntity>, tagIds?: string[]) {
+    if (!tagIds?.length) {
+      return;
+    }
+
+    tagIds.forEach((tagId, index) => {
+      query.andWhere(
+        `EXISTS (
+          SELECT 1 FROM product_tags pt
+          WHERE pt.product_id = product.id
+            AND pt.tag_id = :tagId_${index}
+        )`,
+        { [`tagId_${index}`]: tagId },
+      );
+    });
+  }
+
+  async findAll(
+    { ids, tagIds, sortBy, sort, search, ...query }: ProductQueryDto,
+    user: UserEntity,
+  ) {
     const { skip, limit, page } = getPaginationParams(query);
 
-    const options: { ids: string[]; order?: FindOptionsOrder<ProductEntity> } = {
+    const options: {
+      ids: string[];
+      tagIds?: string[];
+      search?: string;
+      sortBy: 'title' | 'createdAt' | 'price';
+      sortOrder: 'asc' | 'desc';
+    } = {
       ids: [],
+      sortBy: sortBy ?? 'createdAt',
+      sortOrder: sort ?? 'desc',
     };
 
     if (ids?.length) options.ids = ids;
+    if (tagIds?.length) options.tagIds = tagIds;
+    if (search) options.search = search;
 
     // TODO: Рефакторинг
     const [entities, total] = await this[
@@ -191,6 +262,10 @@ export class ProductsService {
         requiredCount,
         ...consumable,
       })),
+      tags: (entity.productTags ?? []).map(({ tag }) => ({
+        id: tag.id,
+        title: tag.title,
+      })),
     };
   }
 
@@ -198,10 +273,14 @@ export class ProductsService {
     // TODO: Использовать возвращаемые данные из update для определения наличия записи
     await this.findOneByIdOrError(id);
 
-    const { consumables, ...productUpdatedData } = updateProductDto;
+    const { consumables, tagIds, ...productUpdatedData } = updateProductDto;
 
     if (Array.isArray(consumables)) {
       await this.updateProductConsumable({ productId: id, consumables });
+    }
+
+    if (Array.isArray(tagIds)) {
+      await this.updateProductTags({ productId: id, tagIds });
     }
 
     await this.productsRepository.save({
@@ -294,6 +373,80 @@ export class ProductsService {
     if (consumableIds.length !== existConsumablesCount) {
       // TODO: Сделать более подробную ошибку с ids
       throw ConsumablesException.NotFound();
+    }
+  }
+
+  // TODO: Вынести логику работы с ProductTags в отдельный сервис
+
+  // TODO: Лучше обернуть в транзакцию
+  async updateProductTags({ tagIds, productId }: AddProductTagsType) {
+    const existProductTags = await this.productsTagsRepository.find({
+      where: {
+        product: {
+          id: productId,
+        },
+      },
+      relations: {
+        tag: true,
+      },
+    });
+
+    const newTags = tagIds.filter((tagId) => !existProductTags.find(({ tag }) => tag.id === tagId));
+
+    if (newTags.length) {
+      await this.addTags({ productId, tagIds: newTags });
+    }
+
+    const removedTags = existProductTags.filter(
+      ({ tag }) => !tagIds.find((tagId) => tag.id === tagId),
+    );
+
+    if (removedTags.length) {
+      await this.removeTags({
+        productId,
+        tagIds: removedTags.map(({ tag }) => tag.id),
+      });
+    }
+  }
+
+  async addTags({ tagIds, productId }: AddProductTagsType) {
+    await this.checkTagsIsExistOrError(tagIds);
+
+    const entities = tagIds.map((tagId) =>
+      this.productsTagsRepository.create({
+        product: {
+          id: productId,
+        },
+        tag: {
+          id: tagId,
+        },
+      }),
+    );
+
+    await this.productsTagsRepository.save(entities);
+  }
+
+  async removeTags({ tagIds, productId }: RemoveProductTagsType) {
+    await this.checkTagsIsExistOrError(tagIds);
+
+    await this.productsTagsRepository.delete({
+      product: {
+        id: productId,
+      },
+      tag: {
+        id: In(tagIds),
+      },
+    });
+  }
+
+  async checkTagsIsExistOrError(tagIds: string[]) {
+    const existTagsCount = await this.tagsRepository.countBy({
+      id: In(tagIds),
+    });
+
+    if (tagIds.length !== existTagsCount) {
+      // TODO: Сделать более подробную ошибку с ids
+      throw TagsException.NotFound();
     }
   }
 }

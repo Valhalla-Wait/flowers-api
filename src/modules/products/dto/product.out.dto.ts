@@ -3,6 +3,7 @@ import { CreateProductDto } from '@/modules/products/dto/product.in.dto';
 import { ApiProperty } from '@nestjs/swagger';
 import { ConsumableOutDto } from '@/modules/consumables/dto/consumables.out.dto';
 import { CustomClassTransformOptions } from '@/common/types';
+import { TagOutDto } from '@/modules/tags/dto/tag.out.dto';
 
 @Exclude()
 export class ProductOutDto extends CreateProductDto {
@@ -30,6 +31,13 @@ export class ProductOutDto extends CreateProductDto {
     ),
   )
   inStock: boolean;
+
+  @Expose()
+  @ApiProperty({ type: [TagOutDto] })
+  @Transform(({ obj }) =>
+    (obj.productTags ?? []).map(({ tag }) => ({ id: tag.id, title: tag.title })),
+  )
+  tags: TagOutDto[];
 }
 
 @Exclude()
@@ -44,4 +52,9 @@ export class ProductDetailOutDto extends ProductOutDto {
   @ApiProperty()
   @Type(() => ProductConsumableOutDto)
   consumables: ProductConsumableOutDto[];
+
+  @Expose()
+  @ApiProperty({ type: [TagOutDto] })
+  @Type(() => TagOutDto)
+  tags: TagOutDto[];
 }
